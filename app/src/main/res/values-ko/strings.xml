@@ -63,13 +63,16 @@
     <string name="pause_hint_goals">지⁠금 향⁠하⁠고 있⁠는 목⁠표⁠를 누⁠르⁠세⁠요.</string>
     <string name="pause_hint_question">답⁠한 다⁠음 어⁠디⁠로 갈⁠지 정⁠하⁠세⁠요.</string>
     <string name="pause_your_goal">내 목⁠표</string>
-    <string name="pause_no_goal_card">지⁠금⁠은 떠⁠오⁠르⁠는 목⁠표⁠가 없⁠어⁠요.</string>
     <string name="pause_question">%1$s 열⁠기, 이 목⁠표⁠에 도⁠움⁠이 되⁠나⁠요?</string>
-    <string name="pause_question_no_goal">%1$s 열⁠기, 지⁠금 나⁠에⁠게 도⁠움⁠이 되⁠나⁠요?</string>
+    <string name="pause_question_no_goal">%1$s, 무⁠엇 때⁠문⁠에 여⁠나⁠요?</string>
     <string name="answer_yes">네, 이 목⁠표⁠에 필⁠요⁠해⁠요</string>
     <string name="answer_yes_example">관⁠련⁠된 사⁠람⁠에⁠게 연⁠락⁠하⁠거⁠나, 꼭 필⁠요⁠한 것 하⁠나⁠를 확⁠인⁠할 때</string>
     <string name="answer_maybe">글⁠쎄⁠요, 잘 모⁠르⁠겠⁠어⁠요</string>
     <string name="answer_no">아⁠니⁠요, 뭔⁠가 피⁠하⁠고 있⁠거⁠나 심⁠심⁠해⁠요</string>
+    <string name="answer_yes_nogoal">딱 할 일⁠이 있⁠어⁠요</string>
+    <string name="answer_yes_nogoal_example">누⁠군⁠가⁠에⁠게 답⁠하⁠거⁠나, 하⁠나⁠만 확⁠인⁠할 때</string>
+    <string name="answer_maybe_nogoal">잘 모⁠르⁠겠⁠어⁠요</string>
+    <string name="answer_no_nogoal">습⁠관⁠이⁠거⁠나, 심⁠심⁠하⁠거⁠나, 뭔⁠가 피⁠하⁠고 있⁠어⁠요</string>
     <string name="answer_short_yes">네</string>
     <string name="answer_short_maybe">글⁠쎄⁠요</string>
     <string name="answer_short_no">아⁠니⁠요</string>
@@ -259,7 +262,7 @@
     <string name="manual_apps_t">앱 선⁠택</string>
     <string name="manual_apps">앱 탭⁠에⁠서 열⁠기 전⁠에 잠⁠깐 멈⁠출 앱⁠의 스⁠위⁠치⁠를 켜⁠세⁠요. 언⁠제⁠든⁠지 바⁠꿀 수 있⁠어⁠요.</string>
     <string name="manual_pause_t">잠⁠깐 멈⁠춤 화⁠면</string>
-    <string name="manual_pause">먼⁠저 지⁠금 향⁠하⁠는 목⁠표⁠나 \'⁠지⁠금⁠은 없⁠음\'⁠을 누⁠르⁠세⁠요. 그⁠러⁠면 고⁠른 목⁠표⁠와 앱 이⁠름⁠이 나⁠오⁠고, 질⁠문 하⁠나⁠가 나⁠와⁠요. 이 앱⁠을 열⁠면 이 목⁠표⁠에 도⁠움⁠이 되⁠나⁠요? 남⁠은 목⁠표⁠가 없⁠으⁠면 바⁠로 질⁠문⁠으⁠로 넘⁠어⁠가⁠요.</string>
+    <string name="manual_pause">먼⁠저 지⁠금 향⁠하⁠는 목⁠표⁠나 \'⁠지⁠금⁠은 없⁠음\'⁠을 누⁠르⁠세⁠요. 그⁠러⁠면 고⁠른 목⁠표⁠와 앱 이⁠름⁠이 나⁠오⁠고, 질⁠문 하⁠나⁠가 나⁠와⁠요. 이 앱⁠을 열⁠면 이 목⁠표⁠에 도⁠움⁠이 되⁠나⁠요? \'⁠지⁠금⁠은 없⁠음\'⁠을 누⁠르⁠면 질⁠문⁠이 \'⁠무⁠엇 때⁠문⁠에 여⁠나⁠요?\'⁠로 바⁠뀌⁠고, 할 일⁠이 있⁠는⁠지, 잘 모⁠르⁠겠⁠는⁠지, 습⁠관·심⁠심⁠함·회⁠피⁠인⁠지 고⁠르⁠게 돼⁠요.</string>
     <string name="manual_answers_t">네, 글⁠쎄⁠요, 아⁠니⁠요</string>
     <string name="manual_answers">틀⁠린 답⁠은 없⁠고, \'⁠아⁠니⁠요\'⁠를 골⁠라⁠도 앱⁠을 막⁠지 않⁠아⁠요. 답⁠하⁠면 그 답⁠에 맞⁠는 짧⁠은 문⁠장⁠이 나⁠와⁠요. 설⁠정 &gt; 말⁠투⁠에⁠서 \'⁠부⁠드⁠럽⁠게\' 또⁠는 \'⁠직⁠설⁠적⁠으⁠로\'⁠를 고⁠를 수 있⁠어⁠요.</string>
     <string name="manual_downtime_t">쉬⁠는 시⁠간</string>

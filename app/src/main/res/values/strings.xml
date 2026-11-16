@@ -69,14 +69,19 @@
     <string name="pause_hint_goals">Tap the goal you\'re working on.</string>
     <string name="pause_hint_question">Answer, then choose where to go.</string>
     <string name="pause_your_goal">Your goal</string>
-    <string name="pause_no_goal_card">No goal in mind right now.</string>
     <!-- The one fixed question. The goal is never put inside it, and the app name is only a label. -->
     <string name="pause_question">Does opening %1$s help this goal?</string>
-    <string name="pause_question_no_goal">Does opening %1$s help you right now?</string>
+    <!-- With no goal chosen: asks about intent, not about a goal. -->
+    <string name="pause_question_no_goal">What are you opening %1$s for?</string>
     <string name="answer_yes">Yes, I need it for this</string>
     <string name="answer_yes_example">Messaging someone about it, or checking one specific thing</string>
     <string name="answer_maybe">Maybe, I\'m not sure</string>
     <string name="answer_no">No, I\'m avoiding something or I\'m bored</string>
+    <!-- The three answers when no goal was chosen. Recorded as Yes, Maybe and No. -->
+    <string name="answer_yes_nogoal">Something specific</string>
+    <string name="answer_yes_nogoal_example">Replying to someone, or checking one thing</string>
+    <string name="answer_maybe_nogoal">I\'m not sure</string>
+    <string name="answer_no_nogoal">Habit, boredom, or avoiding something</string>
     <string name="answer_short_yes">Yes</string>
     <string name="answer_short_maybe">Maybe</string>
     <string name="answer_short_no">No</string>
@@ -281,7 +286,7 @@
     <string name="manual_apps_t">Choosing apps</string>
     <string name="manual_apps">Open the Apps tab and switch on the apps that should start with a pause. You can change this at any time.</string>
     <string name="manual_pause_t">The pause</string>
-    <string name="manual_pause">First, tap the goal you\'re working on, or None right now. Then you see that goal on its own, the app\'s name, and one question that asks whether opening the app helps this goal. If you have no goals left, GoalGate goes straight to the question.</string>
+    <string name="manual_pause">First, tap the goal you\'re working on, or None right now. Then you see that goal on its own, the app\'s name, and one question that asks whether opening the app helps this goal. If you tap None right now, the question changes to what you are opening the app for, with answers to match: something specific, not sure, or habit, boredom or avoiding something.</string>
     <string name="manual_answers_t">Yes, Maybe or No</string>
     <string name="manual_answers">There is no wrong answer, and No never blocks the app. After you answer, a short line appears that fits your answer. In Settings &gt; Tone you can choose how it speaks: Gentle or Direct. Settings &gt; Reflection lines can add a Korean version.</string>
     <string name="manual_downtime_t">Downtime</string>

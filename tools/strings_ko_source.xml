@@ -62,13 +62,16 @@
     <string name="pause_hint_goals">지금 향하고 있는 목표를 누르세요.</string>
     <string name="pause_hint_question">답한 다음 어디로 갈지 정하세요.</string>
     <string name="pause_your_goal">내 목표</string>
-    <string name="pause_no_goal_card">지금은 떠오르는 목표가 없어요.</string>
     <string name="pause_question">%1$s 열기, 이 목표에 도움이 되나요?</string>
-    <string name="pause_question_no_goal">%1$s 열기, 지금 나에게 도움이 되나요?</string>
+    <string name="pause_question_no_goal">%1$s, 무엇 때문에 여나요?</string>
     <string name="answer_yes">네, 이 목표에 필요해요</string>
     <string name="answer_yes_example">관련된 사람에게 연락하거나, 꼭 필요한 것 하나를 확인할 때</string>
     <string name="answer_maybe">글쎄요, 잘 모르겠어요</string>
     <string name="answer_no">아니요, 뭔가 피하고 있거나 심심해요</string>
+    <string name="answer_yes_nogoal">딱 할 일이 있어요</string>
+    <string name="answer_yes_nogoal_example">누군가에게 답하거나, 하나만 확인할 때</string>
+    <string name="answer_maybe_nogoal">잘 모르겠어요</string>
+    <string name="answer_no_nogoal">습관이거나, 심심하거나, 뭔가 피하고 있어요</string>
     <string name="answer_short_yes">네</string>
     <string name="answer_short_maybe">글쎄요</string>
     <string name="answer_short_no">아니요</string>
@@ -258,7 +261,7 @@
     <string name="manual_apps_t">앱 선택</string>
     <string name="manual_apps">앱 탭에서 열기 전에 잠깐 멈출 앱의 스위치를 켜세요. 언제든지 바꿀 수 있어요.</string>
     <string name="manual_pause_t">잠깐 멈춤 화면</string>
-    <string name="manual_pause">먼저 지금 향하는 목표나 \'지금은 없음\'을 누르세요. 그러면 고른 목표와 앱 이름이 나오고, 질문 하나가 나와요. 이 앱을 열면 이 목표에 도움이 되나요? 남은 목표가 없으면 바로 질문으로 넘어가요.</string>
+    <string name="manual_pause">먼저 지금 향하는 목표나 \'지금은 없음\'을 누르세요. 그러면 고른 목표와 앱 이름이 나오고, 질문 하나가 나와요. 이 앱을 열면 이 목표에 도움이 되나요? \'지금은 없음\'을 누르면 질문이 \'무엇 때문에 여나요?\'로 바뀌고, 할 일이 있는지, 잘 모르겠는지, 습관·심심함·회피인지 고르게 돼요.</string>
     <string name="manual_answers_t">네, 글쎄요, 아니요</string>
     <string name="manual_answers">틀린 답은 없고, \'아니요\'를 골라도 앱을 막지 않아요. 답하면 그 답에 맞는 짧은 문장이 나와요. 설정 &gt; 말투에서 \'부드럽게\' 또는 \'직설적으로\'를 고를 수 있어요.</string>
     <string name="manual_downtime_t">쉬는 시간</string>

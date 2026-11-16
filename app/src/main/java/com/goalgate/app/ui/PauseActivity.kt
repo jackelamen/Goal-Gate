@@ -811,20 +811,15 @@ private fun QuestionPart(
                     )
                 }
             }
-        } else {
-            Text(
-                stringResource(R.string.pause_no_goal_card),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                modifier = Modifier.enterAnimation(entered, 0),
-            )
         }
-        // A hairline between the user's words and the app's question.
-        Spacer(Modifier.height(if (compact) 14.dp else 22.dp))
-        Box(Modifier.fillMaxWidth().height(1.dp).graphicsLayer { alpha = 0.18f }.enterAnimation(entered, 1)) {
-            Canvas(Modifier.fillMaxSize()) { drawRect(Color.White) }
+        // A hairline between the user's words and the app's question (only when there is a goal above it).
+        if (goal != null) {
+            Spacer(Modifier.height(if (compact) 14.dp else 22.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).graphicsLayer { alpha = 0.18f }.enterAnimation(entered, 1)) {
+                Canvas(Modifier.fillMaxSize()) { drawRect(Color.White) }
+            }
+            Spacer(Modifier.height(if (compact) 14.dp else 22.dp))
         }
-        Spacer(Modifier.height(if (compact) 14.dp else 22.dp))
         // The app's name is only ever a label, so it never needs grammar.
         SectionLabel(appLabel, color = LocalAccent.current.accent, modifier = Modifier.enterAnimation(entered, 1))
         Spacer(Modifier.height(6.dp))
@@ -840,6 +835,7 @@ private fun QuestionPart(
             Answer.entries.forEachIndexed { index, option ->
                 AnswerCard(
                     option = option,
+                    noGoal = goal == null,
                     compact = compact,
                     chosen = answer == option,
                     dimmed = answer != null && answer != option,
@@ -993,6 +989,7 @@ private fun responseFor(answer: Answer, tone: Tone): Int = when (answer) {
 @Composable
 private fun AnswerCard(
     option: Answer,
+    noGoal: Boolean,
     compact: Boolean,
     chosen: Boolean,
     dimmed: Boolean,
@@ -1012,10 +1009,11 @@ private fun AnswerCard(
         if (chosen) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface, tween(360), label = "answerText",
     )
     val edge by animateFloatAsState(if (chosen) 1f else 0f, tween(300), label = "answerEdge")
+    // With no goal, the question asks what the app is for, so the answers say that.
     val (main, example) = when (option) {
-        Answer.YES -> R.string.answer_yes to R.string.answer_yes_example
-        Answer.MAYBE -> R.string.answer_maybe to null
-        Answer.NO -> R.string.answer_no to null
+        Answer.YES -> if (noGoal) R.string.answer_yes_nogoal to R.string.answer_yes_nogoal_example else R.string.answer_yes to R.string.answer_yes_example
+        Answer.MAYBE -> if (noGoal) R.string.answer_maybe_nogoal to null else R.string.answer_maybe to null
+        Answer.NO -> if (noGoal) R.string.answer_no_nogoal to null else R.string.answer_no to null
     }
     Surface(
         onClick = onClick,
