@@ -55,9 +55,20 @@ interface TriggerLogDao {
     @Query("SELECT * FROM trigger_logs")
     fun getAll(): List<TriggerLog>
 
-    /** How many times [packageName] was opened (not time checks) since [since]. */
-    @Query("SELECT COUNT(*) FROM trigger_logs WHERE packageName = :packageName AND reason = 'OPEN' AND openedAt >= :since")
-    fun countOpensSince(packageName: String, since: Long): Int
+    /**
+     * When [packageName] was opened (not time checks) since [since], one entry
+     * per row. See [com.goalgate.app.data.opensThisHour] for how these are counted.
+     */
+    @Query("SELECT openedAt FROM trigger_logs WHERE packageName = :packageName AND reason = 'OPEN' AND openedAt >= :since")
+    fun openTimesSince(packageName: String, since: Long): List<Long>
+
+    /**
+     * The row already written for this exact open, if any. The pause screen can be
+     * created twice for one open (the phone is rotated, or Android rebuilds the
+     * screen), and it must not log the same open twice.
+     */
+    @Query("SELECT * FROM trigger_logs WHERE packageName = :packageName AND openedAt = :openedAt AND reason = :reason LIMIT 1")
+    fun findTrigger(packageName: String, openedAt: Long, reason: String): TriggerLog?
 
     /** The user's latest answers, newest first: true = right, false = wrong. */
     @Query("SELECT correct FROM trigger_logs WHERE correct IS NOT NULL ORDER BY openedAt DESC LIMIT 100")

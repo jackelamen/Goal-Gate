@@ -84,6 +84,18 @@ fun weekByApp(logs: List<TriggerLog>, now: Long): List<AppWeek> {
  *                      including this time.
  * @return seconds to wait before "Continue" works.
  */
+/**
+ * How many times an app was opened in the last hour, including this time.
+ *
+ * [earlierOpenTimes] are the "opened at" times of the logged opens in the last
+ * hour. The same open can appear more than once (older versions logged it again
+ * when the pause screen was rebuilt), and the current open may already be in the
+ * list (the screen was rebuilt after it was logged), so each distinct time counts
+ * once and the current one is always counted exactly once.
+ */
+fun opensThisHour(earlierOpenTimes: List<Long>, currentOpenedAt: Long): Int =
+    earlierOpenTimes.filter { it != currentOpenedAt }.distinct().size + 1
+
 fun continueDelaySeconds(opensThisHour: Int): Int = when {
     opensThisHour >= 5 -> 10
     opensThisHour >= 3 -> 5

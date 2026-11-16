@@ -8,6 +8,7 @@ import com.goalgate.app.data.computeStats
 import com.goalgate.app.data.adviseDifficulty
 import com.goalgate.app.data.computeStreak
 import com.goalgate.app.data.continueDelaySeconds
+import com.goalgate.app.data.opensThisHour
 import com.goalgate.app.data.questionOfTheDay
 import com.goalgate.app.data.weekByApp
 import com.goalgate.app.data.difficultyOfId
@@ -139,6 +140,18 @@ class LogicTest {
         assertEquals(5, continueDelaySeconds(4))
         assertEquals(10, continueDelaySeconds(5))
         assertEquals(10, continueDelaySeconds(12))
+    }
+
+    @Test
+    fun opensThisHour_countsEachOpenOnce() {
+        // Nothing logged yet: this is the first open.
+        assertEquals(1, opensThisHour(emptyList(), currentOpenedAt = 500))
+        // Two earlier opens, plus this one.
+        assertEquals(3, opensThisHour(listOf(100, 200), currentOpenedAt = 500))
+        // The same open logged twice (rebuilt screen) counts once.
+        assertEquals(3, opensThisHour(listOf(100, 100, 200), currentOpenedAt = 500))
+        // The current open is already in the log: it is not counted twice.
+        assertEquals(3, opensThisHour(listOf(100, 200, 500, 500), currentOpenedAt = 500))
     }
 
     @Test

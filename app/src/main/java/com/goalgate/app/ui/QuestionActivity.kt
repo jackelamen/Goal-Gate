@@ -83,6 +83,7 @@ import com.goalgate.app.data.QuestionProgress
 import com.goalgate.app.data.QuestionType
 import com.goalgate.app.data.TriggerLog
 import com.goalgate.app.data.continueDelaySeconds
+import com.goalgate.app.data.opensThisHour
 import com.goalgate.app.data.pickQuestion
 import com.goalgate.app.detection.GateController
 import com.goalgate.app.ui.theme.LocalAccent
@@ -248,10 +249,12 @@ class QuestionActivity : ComponentActivity() {
             }
             val left = toReview.size
 
-            // Escalation, only for "app opened" triggers. This trigger is not in
-            // the log yet, so add one to include it.
+            // Escalation, only for "app opened" triggers (see opensThisHour).
             val opens = if (!practice && reason == TriggerLog.REASON_OPEN) {
-                app.database.triggerLogDao().countOpensSince(targetPackage, System.currentTimeMillis() - 60 * 60_000L) + 1
+                opensThisHour(
+                    app.database.triggerLogDao().openTimesSince(targetPackage, openedAt - 60 * 60_000L),
+                    openedAt,
+                )
             } else {
                 0
             }
@@ -277,6 +280,11 @@ class QuestionActivity : ComponentActivity() {
         shownLogged = true
         val delayMs = (System.currentTimeMillis() - openedAt).coerceAtLeast(0)
         app.dbThread.execute {
+            // Rotated or rebuilt screen: keep using the row already written for this open.
+            app.database.triggerLogDao().findTrigger(targetPackage, openedAt, reason)?.let {
+                log = it
+                return@execute
+            }
             val row = TriggerLog(
                 packageName = targetPackage,
                 openedAt = openedAt,
