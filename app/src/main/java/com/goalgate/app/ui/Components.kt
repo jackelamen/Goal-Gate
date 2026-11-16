@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,21 +47,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goalgate.app.ui.theme.LocalAccent
-import kotlin.math.cos
-import kotlin.math.sin
 
 /*
  * Small building blocks shared by several screens.
@@ -178,7 +175,7 @@ fun koreanStyle(): TextStyle = MaterialTheme.typography.bodyMedium
 fun keepKoreanWordsTogether(text: String): String =
     text.split(' ').joinToString(" ") { word -> word.toList().joinToString("\u2060") }
 
-/** A small label in spaced capitals, e.g. "DIFFICULTY". */
+/** A small label in spaced capitals, e.g. "COOLDOWN". */
 @Composable
 fun SectionLabel(
     text: String,
@@ -194,26 +191,6 @@ fun SectionLabel(
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
-}
-
-/**
- * Returns [text] with its final full stop (or "!") coloured in the accent.
- * This is the app's signature, used on the big headlines.
- */
-@Composable
-fun withAccentFullStop(text: String): AnnotatedString {
-    val accent = LocalAccent.current.accent
-    // The final full stop, or the "!" of short Korean feedback such as "정답!".
-    val mark = text.lastOrNull()
-    if (mark != '.' && mark != '!') return AnnotatedString(text)
-    return buildAnnotatedString {
-        // The invisible word joiner (U+2060) keeps the coloured dot on the same
-        // line as the last word. Without it, Android may treat the colour change
-        // as a place to break the line, and the dot falls onto a line of its own.
-        append(text.dropLast(1))
-        append("\u2060")
-        withStyle(SpanStyle(color = accent)) { append(mark.toString()) }
-    }
 }
 
 /**
@@ -264,64 +241,138 @@ fun <T> ChoiceRow(
 }
 
 /**
- * The lapis full stop: GoalGate's signature, and the sign for "pause".
+ * The summit mark: GoalGate's signature. A short ridge line rising to one
+ * peak, with a dot on top in the accent (signal orange on the pine ground).
  *
- * With [breathing] it swells and settles slowly, like a calm breath.
- * When [celebrate] becomes true it jumps and throws out a ring of fine rays.
+ * With [breathing] the dot swells and settles slowly, like a calm breath.
+ * When [celebrate] becomes true the dot lifts once and a soft ring spreads
+ * from it. [drawIn] draws the ridge in from left to right when it first appears.
  */
 @Composable
-fun FullStop(modifier: Modifier = Modifier, breathing: Boolean = false, celebrate: Boolean = false) {
+fun SummitMark(
+    modifier: Modifier = Modifier,
+    breathing: Boolean = false,
+    celebrate: Boolean = false,
+    drawIn: Boolean = false,
+    lineColor: Color = MaterialTheme.colorScheme.onBackground,
+) {
     val accent = LocalAccent.current.accent
 
-    // Breathing: a number that drifts between 0 and 1 forever.
     val transition = rememberInfiniteTransition(label = "breathing")
     val breath by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(3200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "breath",
     )
+    val line = remember { Animatable(if (drawIn) 0f else 1f) }
+    LaunchedEffect(drawIn) { if (drawIn) line.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
 
-    // Celebration: the dot pops, and rays fly outwards once.
-    val pop = remember { Animatable(1f) }
-    val rays = remember { Animatable(0f) }
+    val lift = remember { Animatable(1f) }
+    val ring = remember { Animatable(0f) }
     LaunchedEffect(celebrate) {
         if (celebrate) {
-            pop.animateTo(1.9f, tween(120))
-            pop.animateTo(1f, spring(dampingRatio = 0.3f, stiffness = Spring.StiffnessMediumLow))
+            lift.animateTo(1.6f, tween(160))
+            lift.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessLow))
         }
     }
-    LaunchedEffect(celebrate) {
-        if (celebrate) rays.animateTo(1f, tween(700, easing = FastOutSlowInEasing))
-    }
+    LaunchedEffect(celebrate) { if (celebrate) ring.animateTo(1f, tween(1100, easing = FastOutSlowInEasing)) }
 
-    Canvas(modifier.size(28.dp)) {
-        val center = Offset(size.width / 2, size.height / 2)
-        val radius = 4.5.dp.toPx() * pop.value
+    Canvas(modifier.size(width = 34.dp, height = 26.dp)) {
+        val w = size.width
+        val h = size.height
+        // The ridge: a low shoulder, a small dip, then the peak.
+        val points = listOf(
+            Offset(0f, h * 0.92f),
+            Offset(w * 0.30f, h * 0.60f),
+            Offset(w * 0.42f, h * 0.72f),
+            Offset(w * 0.66f, h * 0.36f),
+            Offset(w, h * 0.92f),
+        )
+        val stroke = 1.6.dp.toPx()
+        // Draw each segment up to the current progress of the line.
+        val total = points.zipWithNext().sumOf { (a, b) -> (b - a).getDistance().toDouble() }.toFloat()
+        var left = total * line.value
+        for ((a, b) in points.zipWithNext()) {
+            if (left <= 0f) break
+            val length = (b - a).getDistance()
+            val part = (left / length).coerceAtMost(1f)
+            drawLine(lineColor, a, a + (b - a) * part, stroke, StrokeCap.Round)
+            left -= length
+        }
 
+        val peak = Offset(w * 0.66f, h * 0.36f - 6.dp.toPx())
+        val radius = 3.2.dp.toPx() * lift.value
         if (breathing) {
-            // A soft halo that grows and fades with each breath.
-            drawCircle(accent, radius = radius + 3.dp.toPx() + 6.dp.toPx() * breath, center = center, alpha = 0.20f - 0.14f * breath)
+            drawCircle(accent, radius = radius + 2.dp.toPx() + 5.dp.toPx() * breath, center = peak, alpha = 0.22f - 0.16f * breath)
         }
-        drawCircle(accent, radius = radius, center = center)
+        val r = ring.value
+        if (r > 0f && r < 1f) {
+            drawCircle(accent, radius = radius + 18.dp.toPx() * r, center = peak, alpha = 0.5f * (1f - r), style = Stroke(1.2.dp.toPx()))
+        }
+        if (line.value > 0.85f) drawCircle(accent, radius = radius, center = peak, alpha = ((line.value - 0.85f) / 0.15f).coerceIn(0f, 1f))
+    }
+}
 
-        // The rays: twelve fine lines that travel outwards and fade.
-        val t = rays.value
-        if (t > 0f && t < 1f) {
-            val start = 10.dp.toPx() + 14.dp.toPx() * t
-            val length = 8.dp.toPx() * (1f - t)
-            for (i in 0 until 12) {
-                val angle = Math.toRadians(i * 30.0).toFloat()
-                val direction = Offset(cos(angle), sin(angle))
-                drawLine(
-                    color = accent,
-                    start = center + direction * start,
-                    end = center + direction * (start + length),
-                    strokeWidth = 1.6.dp.toPx(),
-                    cap = StrokeCap.Round,
-                    alpha = 1f - t,
+/**
+ * The Close button on the pause: a solid pill in the signal orange with ink
+ * text. It is the one place the spark is used for a control, because Close is
+ * the choice GoalGate exists to encourage.
+ */
+@Composable
+fun SignalButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val interaction = remember { MutableInteractionSource() }
+    val accent = LocalAccent.current
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        interactionSource = interaction,
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = accent.accent,
+            contentColor = accent.onAccent,
+            disabledContainerColor = accent.accent.copy(alpha = 0.3f),
+            disabledContentColor = accent.onAccent.copy(alpha = 0.5f),
+        ),
+        modifier = modifier.fillMaxWidth().heightIn(min = 58.dp).pressScale(interaction),
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+    }
+}
+
+/**
+ * Text of any length that must fit in up to [maxLines] lines: a goal on its
+ * card, for example. If it does not fit, it shrinks half a point at a time
+ * down to [minFontSize] (then the last line ends in "..."). Words are never
+ * broken in the middle by this; that is what the shrinking is for.
+ */
+@Composable
+fun FitBlock(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    maxLines: Int = 2,
+    minFontSize: TextUnit = 15.sp,
+) {
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints(modifier) {
+        val maxWidthPx = constraints.maxWidth
+        val fitted = remember(text, style, maxWidthPx, maxLines) {
+            var size = style.fontSize.value
+            val ratio = style.lineHeight.value / style.fontSize.value
+            while (size > minFontSize.value) {
+                val result = measurer.measure(
+                    text,
+                    style.copy(fontSize = size.sp, lineHeight = (size * ratio).sp),
+                    maxLines = maxLines,
+                    constraints = Constraints(maxWidth = maxWidthPx),
                 )
+                if (!result.hasVisualOverflow) break
+                size -= 0.5f
             }
+            style.copy(fontSize = size.sp, lineHeight = (size * ratio).sp)
         }
+        Text(text, style = fitted, color = color, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
     }
 }

@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.Flow
  *
  * "suspend" functions are called from coroutines. The plain (non-suspend) ones
  * block until the database is done, so they must only be called from a
- * background thread. The question screen uses GoalGateApp.dbThread for that.
+ * background thread. The pause screen uses GoalGateApp.dbThread for that.
  */
 
 @Dao
@@ -36,6 +36,26 @@ interface SelectedAppDao {
 
     @Delete
     suspend fun delete(app: SelectedApp)
+}
+
+@Dao
+interface GoalDao {
+    /** Every goal, achieved ones included. Updates by itself. */
+    @Query("SELECT * FROM goals ORDER BY position, id")
+    fun observeAll(): Flow<List<Goal>>
+
+    /** Every goal, for background work (the pause screen, the widget). */
+    @Query("SELECT * FROM goals ORDER BY position, id")
+    fun getAll(): List<Goal>
+
+    @Insert
+    suspend fun insert(goal: Goal): Long
+
+    @Update
+    suspend fun update(goals: List<Goal>)
+
+    @Delete
+    suspend fun delete(goal: Goal)
 }
 
 @Dao
@@ -70,45 +90,31 @@ interface TriggerLogDao {
     @Query("SELECT * FROM trigger_logs WHERE packageName = :packageName AND openedAt = :openedAt AND reason = :reason LIMIT 1")
     fun findTrigger(packageName: String, openedAt: Long, reason: String): TriggerLog?
 
-    /** The user's latest answers, newest first: true = right, false = wrong. */
-    @Query("SELECT correct FROM trigger_logs WHERE correct IS NOT NULL ORDER BY openedAt DESC LIMIT 100")
-    fun recentAnswers(): List<Boolean>
+    /** The reflection lines shown most recently, newest first, so they are not repeated soon. */
+    @Query("SELECT questionId FROM trigger_logs WHERE questionId != '' ORDER BY openedAt DESC LIMIT :limit")
+    fun recentLineIds(limit: Int): List<String>
 
     @Query("DELETE FROM trigger_logs")
     suspend fun deleteAll()
 }
 
-@Dao
-interface QuestionProgressDao {
-    @Query("SELECT * FROM question_progress")
-    fun getAll(): List<QuestionProgress>
-
-    @Query("SELECT * FROM question_progress WHERE questionId = :questionId")
-    fun get(questionId: String): QuestionProgress?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun save(progress: QuestionProgress)
-
-    /** Questions whose last answer was wrong, newest first. Updates by itself. */
-    @Query("SELECT * FROM question_progress WHERE lastAnswerWrong = 1 ORDER BY lastSeenAt DESC")
-    fun observeToReview(): Flow<List<QuestionProgress>>
-}
-
 /** The database itself: a list of tables and a way to reach each DAO. */
 @Database(
-    entities = [SelectedApp::class, TriggerLog::class, QuestionProgress::class],
-    version = 2,
+    entities = [SelectedApp::class, TriggerLog::class, Goal::class],
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun selectedAppDao(): SelectedAppDao
     abstract fun triggerLogDao(): TriggerLogDao
-    abstract fun questionProgressDao(): QuestionProgressDao
+    abstract fun goalDao(): GoalDao
 
     companion object {
+        const val FILE_NAME = "goalgate.db"
+
         fun create(context: Context): AppDatabase =
-            Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "goalgate.db")
-                .addMigrations(MIGRATION_1_2)
+            Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, FILE_NAME)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
 
         /**
@@ -118,6 +124,29 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE trigger_logs ADD COLUMN reason TEXT NOT NULL DEFAULT 'OPEN'")
+            }
+        }
+
+        /**
+         * Version 3 (GoalGate): the goals table, and two new log columns for the
+         * goal picked and the answer given. Existing log rows keep everything they
+         * had; the new columns start empty (null). The question-progress table from
+         * WordGate is no longer used, so it is removed.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS goals (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "text TEXT NOT NULL, " +
+                        "why TEXT, " +
+                        "position INTEGER NOT NULL, " +
+                        "createdAt INTEGER NOT NULL, " +
+                        "achievedAt INTEGER)"
+                )
+                db.execSQL("ALTER TABLE trigger_logs ADD COLUMN goalId INTEGER")
+                db.execSQL("ALTER TABLE trigger_logs ADD COLUMN answer TEXT")
+                db.execSQL("DROP TABLE IF EXISTS question_progress")
             }
         }
     }

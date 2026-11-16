@@ -1,195 +1,149 @@
 # GoalGate
 
-An Android app that pauses you with one English question before you open a
-distracting app. No server, no AI, no login. Everything stays on the phone.
+An Android app that shows you your own goals before you open a distracting
+app, and asks one honest question: will this help, or is it a way to avoid
+something? Then the choice is yours. Nothing is blocked, nothing is scored,
+and nothing leaves the phone.
 
-![The question screen](docs/question-screen.png)
-![Onboarding, stats and settings](docs/app-screens.png)
+GoalGate is built on WordGate's foundation (detection, permissions,
+onboarding, cooldown, time check, escalation, widget, Korean support).
 
 ## Build and install
 
-1. Open this folder in Android Studio (or use the command line below).
-2. Plug in your phone with USB debugging on.
-3. Run:
-
 ```
-./gradlew installDebug     # build and install on the phone
-./gradlew test             # run the unit tests (no phone needed)
+./gradlew installDebug     # build and install on a phone with USB debugging on
+./gradlew test             # run the unit tests and the database update test
 ```
 
 Needs JDK 17 or newer and Android SDK platform 35. Works on Android 8.0+.
+Debug builds are signed with the committed key `app/debug.keystore`, so a new
+APK installs over the old one as an update and keeps the user's data.
 
-## First-run setup
+## The pause, step by step
 
-One thing per screen: welcome, "Display over other apps", "Usage access",
-notifications, battery, choose apps, done. On the two system-settings steps
-GoalGate checks twice a second and brings itself back as soon as the switch
-is on. Steps already allowed are skipped, and setup cannot finish until at
-least one app is chosen.
+1. **Your goals.** The goals you wrote, as cards. Tap the one you are working
+   on, or "None right now". (With no goals left, this step is skipped.)
+2. **The question.** Your goal on its own, exactly as you typed it; the app's
+   name as a label; and one fixed question: *Does opening Instagram help this
+   goal?* Answers: Yes, I need it for this / Maybe, I'm not sure / No, I'm
+   avoiding something or I'm bored. The goal is never put inside the
+   question, so any wording works, in English or Korean.
+3. **The choice.** A short sentence that fits the answer (Settings > Tone:
+   Gentle or Direct) and one of 40 original reflection lines. Then **Close**
+   (the solid orange button) or **Continue** (quiet). From the 3rd open of the
+   same app within an hour, Continue waits 5 seconds (10 from the 5th).
 
-Settings also has a **User guide** (Help) and **Reset GoalGate** (Data), which
-deletes all records and settings and returns to the first setup screen.
+Every pause writes one row to the log: app, time, delay, engine, reason
+(open or time check), the goal picked, the answer, the line shown, and the
+action (Close, Continue, or none).
 
-## How it works
+## How detection works
 
 ```
  Engine A (UsagePollingService)          Engine B (ForegroundAccessibilityService)
  asks UsageStatsManager every 300 ms     gets a "window changed" event from Android
                 \                                   /
-                 v                                 v
                     GateController.onForegroundApp()
                     - did the foreground app change?
                     - is it one of the chosen apps?
                     - is its cooldown over?
                                  |
-                                 v
-                          QuestionActivity
-                 question -> feedback -> Close / Continue
+                           PauseActivity
+              goals -> question -> Close / Continue
                                  |
-                                 v
-                    Room database (trigger_logs table)
+                    Room database (trigger_logs, goals)
 ```
 
-Only the engine selected in Settings acts. Switch between them there to compare.
+Only the engine selected in Settings acts. **Time check** (Settings, off by
+default): after Continue, GoalGate counts how long you stay in that app (5,
+15 or 30 minutes) and pauses you again. A break of under a minute carries
+on; a minute or more resets the clock (`SessionTimer.kt`, deliberately not a
+setting).
 
-**Time check** (Settings, off by default): after you tap Continue, GoalGate
-counts how long you stay in that app (5, 15 or 30 minutes). When the limit
-is reached you get another question, headed "15 min on Instagram".
-Leaving the app or locking the phone pauses the clock. Coming back within
-one minute carries on where it left off; a break of a minute or more starts
-it from zero. The one minute is fixed in `SessionTimer.kt`
-(`BREAK_RESETS_AFTER_MS`) and is deliberately not a setting, so a quick
-switch away cannot dodge the check. The clock is driven from
-`GateController.kt`, so it works with both engines. Time checks are
-logged with reason `TIME_CHECK` and left out of the debug screen's delay
-figures.
+**Hourly count fix.** WordGate could count one open twice when the pause
+screen was rebuilt (rotation, or Android recreating it): it logged a second
+row and then counted its own earlier row plus one. GoalGate reuses the row
+already written for an open and counts distinct open times
+(`opensThisHour` in `data/Stats.kt`, unit-tested).
 
 ## Where things are
 
 | Folder / file | What is in it |
 | --- | --- |
-| `app/src/main/assets/questions.json` | The 150 bundled questions |
-| `tools/make_questions.py` | Edit questions here, then run it to rebuild the JSON |
-| `app/src/main/res/values/strings.xml` | Every piece of on-screen text |
-| `.../data/` | Room database, settings, question picking, stats maths |
+| `tools/make_reflections.py` | The 40 reflection lines (English and Korean); run it to rebuild `assets/reflections.json` |
+| `app/src/main/res/values/strings.xml` | Every piece of on-screen English text |
+| `tools/strings_ko_source.xml` | Korean text; run `python3 tools/make_strings_ko.py` |
+| `.../data/` | Room database and migrations, goals rules, reflections, weekly counts |
 | `.../detection/` | Both engines, the shared rules, permissions, boot receiver |
-| `.../ui/` | All screens. `QuestionActivity.kt` is the intervention |
+| `.../ui/PauseActivity.kt` | The pause |
+| `.../ui/GoalsScreen.kt` | Goals tab and the goal editor (also used in setup) |
+| `.../ui/ReflectionsScreen.kt` | The last seven days |
 | `.../ui/theme/Theme.kt` | Colours, fonts and shapes, with the design rules at the top |
-| `.../ui/Components.kt` | Shared pieces: buttons, cards, labels and the full stop |
-| `.../ui/Ground.kt` | The deep blue background with its giant full stop and large pale italic word |
+| `.../ui/Ground.kt` | The pine ground with its contour lines |
+| `.../ui/Components.kt` | Shared pieces: buttons, cards, labels, the summit mark |
 
-## Learning features
+## Screens
 
-- **300 questions**: 50 vocabulary and 50 grammar at each level. Edit or add
-  them in `tools/make_questions.py`, then run it to rebuild the JSON.
-- **Review tab**: every question whose last answer was wrong, with the right
-  answer and why. "Practise" opens the question screen in practice mode
-  (nothing is logged as a trigger); a correct answer there removes the
-  question from the list.
-- **Difficulty suggestions**: with at least 20 answers at the current level
-  in the last 7 days, the Stats screen suggests moving up at 85% correct or
-  more, or down at 50% or less. Acting on it or tapping "Not now" hides it
-  for a week. The rule is `adviseDifficulty` in `data/Stats.kt`.
+- **Goals**: up to 5 goals (60 characters each) with an optional one-line
+  "why". Reorder with the arrows, edit or delete, mark achieved (a short,
+  calm celebration). Achieved goals move to a list below and can be brought back.
+- **Apps**: the apps that start with a pause.
+- **Reflections**: the last seven days. How often you answered Yes, Maybe
+  and No, one plain sentence ("This week you said No, you were avoiding
+  something, 6 times. Most were in the evening."), Close and Continue
+  counts, goals picked, and each app's week. No scores, no streaks.
+- **Settings**: tone, reflection lines in Korean, cooldown, time check,
+  detection engine and its permissions, user guide, about & legal, reset.
+- **Widget**: today's goal and a Check in button that opens the Goals tab.
 
-- **Korean explanations**: every question has a Korean explanation as well
-  (`tools/explanations_ko.py`). Settings > Explanations switches it on; it
-  is on by default when the phone's language is Korean.
-- **Gentle escalation**: from the 3rd time the same app is opened within an
-  hour, "Continue" waits 5 seconds after you answer (10 seconds from the 5th
-  time). "Close" always works straight away. The rule is
-  `continueDelaySeconds` in `data/Stats.kt`.
+## Database
 
-- **Per-app stats**: the Stats screen lists each chosen app for the last 7
-  days with how often you chose Close ("closed 9 of 23").
-- **Home-screen widget**: long-press the home screen, choose Widgets, then
-  GoalGate. It shows your streak and today's question (the same question
-  all day, from your level). Tapping it opens that question in practice
-  mode. It refreshes every hour and after every answer.
+Room, version 3. `MIGRATION_2_3` adds the `goals` table and the `goalId` and
+`answer` columns on `trigger_logs`, and drops WordGate's `question_progress`.
+`MigrationTest` builds a real version 2 database, opens it with the app and
+checks every old row survived. Any future schema change needs a new
+migration and a test like it.
 
 ## Testing the two engines on your phone
 
-1. Finish onboarding and switch on one or two apps.
+1. Finish setup and switch on one or two apps.
 2. Open those apps a few dozen times with Engine A selected.
 3. In Settings choose Engine B, grant it, and repeat.
-4. In Settings, tap the version number at the bottom 7 times. The debug screen
-   shows the trigger count, median delay and 90th-percentile delay per engine.
-
-"Delay" is the time from the app coming to the foreground (as reported by
-Android) to the first drawn frame of the question.
+4. In Settings, tap the version number 7 times. The debug screen shows the
+   trigger count, median delay and 90th-percentile delay per engine.
 
 ### Samsung Galaxy notes
 
 - Engine B's switch is greyed out ("Restricted setting") when the app was
   installed from a downloaded APK. Try to switch it on once, then go to
-  Settings > Apps > GoalGate > ⋮ > Allow restricted settings, and try again.
-  Installing with `adb install` or from the Play Store avoids this. The app
-  shows these steps itself once you have tried once.
-
+  Settings > Apps > GoalGate > ⋮ > Allow restricted settings. The app shows
+  these steps itself.
 - Besides turning off battery optimization, add GoalGate to
   Settings > Battery > Background usage limits > Never sleeping apps.
-- Engine A needs "Appear on top" (display over other apps). Without it Android
-  blocks a background app from opening a screen.
 
-## Languages (English and Korean)
+## Languages
 
-The app follows the phone's language: Korean phones get the Korean version,
-everything else gets English. On Android 13 and newer you can also pick a
-language for GoalGate alone in Settings > Apps > GoalGate > Language.
-
-- English text: `app/src/main/res/values/strings.xml`
-- Korean text: edit `tools/strings_ko_source.xml`, then run
-  `python3 tools/make_strings_ko.py`. It writes
-  `app/src/main/res/values-ko/strings.xml` (do not edit that file by hand),
-  checks that every English string has a Korean version, and glues the
-  letters of each Korean word together so lines only wrap between words.
-- Korean explanations for the questions: `tools/explanations_ko.py`.
-- The questions themselves stay in English, since English is what is
-  being practised.
-
-## Screen sizes
-
-Layouts are checked from small phones (320dp wide) and the Galaxy Z Fold
-cover screen to the unfolded Fold, in landscape, and with large system font
-sizes. On wide screens the content stops at a comfortable reading width and
-sits in the middle; on a phone turned sideways the question screen puts the
-question on the left and the answers on the right. Labels that must stay on
-one line (options, tabs) shrink slightly instead of breaking a word.
+The app follows the phone's language (Korean or English); on Android 13+ a
+per-app language can be chosen in system settings. Korean is generated from
+`tools/strings_ko_source.xml`, which glues each Korean word with invisible
+word joiners so lines only wrap between words. Goals are shown exactly as
+the user typed them, in any language.
 
 ## Before publishing on Google Play
 
-- The accessibility service needs a declaration in the Play Console, and the
-  in-app disclosure (`DisclosureScreen.kt`) must be shown in your review video.
-- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` and the `specialUse` foreground
-  service type are both reviewed by Google; be ready to explain them.
+- Choose the final name (check trademarks for "GoalGate") and package name
+  (currently `com.goalgate.app`).
+- Put a contact email in `legal_contact` (`res/values/strings.xml`) and in
+  `docs/privacy-policy.md`, and host that policy at a public URL.
+- Data safety form: no data collected, no data shared.
+- The accessibility service needs a Play Console declaration and a video
+  showing the in-app disclosure. `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` and
+  the `specialUse` foreground service are reviewed too.
+- Create a separate release signing key (never commit it).
 
-## Legal
+## Legal and fonts
 
-Settings > Help > About & legal shows, in English and Korean:
-
-- **Privacy policy.** GoalGate collects nothing; this says so and lists what
-  stays on the phone. The final app has no internet permission (check the
-  merged manifest) and Android backup is off. A hostable copy for the Play
-  Console privacy-policy link is in `docs/privacy-policy.md`.
-- **Open-source licences.** Component list plus full texts in
-  `app/src/main/assets/licenses/` (SIL OFL 1.1 for the fonts, Apache 2.0 for
-  AndroidX, Compose and Kotlin). Add any new library here.
-- **Trademarks.** App names such as Instagram belong to their owners.
-
-Before publishing: put a contact email in `legal_contact`
-(`app/src/main/res/values/strings.xml`) and in `docs/privacy-policy.md`.
-The Contact section of the in-app policy appears once it is filled in.
-
-## Fonts
-
-Newsreader and Hanken Grotesk, both under the SIL Open Font License
-(see `licenses/`).
-
-## Building more apps like this
-
-`.claude/skills/gate-app-builder/` is a Claude skill for making sibling apps
-(prayer, motivation...) from this one. Fill in
-`.claude/skills/gate-app-builder/assets/brief-template.md` (examples in
-`assets/examples/`) and ask Claude to build the app from the brief. The skill
-forks this project, renames it (`scripts/rename_app.py`), swaps the action,
-content, brand and words, and verifies the result.
-
+Settings > Help > About & legal: privacy policy (English and Korean),
+open-source licences (`app/src/main/assets/licenses/`), trademarks.
+Fonts: DM Serif Display and Figtree, SIL Open Font License 1.1 (`licenses/`).
+The reflection lines were written for GoalGate and quote no one.

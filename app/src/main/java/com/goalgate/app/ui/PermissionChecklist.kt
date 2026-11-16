@@ -142,8 +142,7 @@ private fun PermissionRow(title: String, reason: String, granted: Boolean, onAll
         }
         Spacer(Modifier.width(12.dp))
         if (granted) {
-            // Done: the lapis full stop and the word, so colour is not the only signal.
-            FullStop()
+            // Done: the word itself, in the accent, so colour is not the only signal.
             SectionLabel(stringResource(R.string.perm_done), color = accent, modifier = Modifier.padding(end = 8.dp))
         } else {
             OutlinedButton(

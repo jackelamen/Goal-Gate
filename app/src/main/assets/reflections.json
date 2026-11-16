@@ -1,0 +1,242 @@
+[
+ {
+  "id": "y01",
+  "answer": "YES",
+  "en": "What is the one thing you came here to do?",
+  "ko": "여기서 할 일 하나는 뭐예요?"
+ },
+ {
+  "id": "y02",
+  "answer": "YES",
+  "en": "How will you know when you're done here?",
+  "ko": "언제 끝났다고 할 수 있을까요?"
+ },
+ {
+  "id": "y03",
+  "answer": "YES",
+  "en": "Could you give it a small limit, like five minutes?",
+  "ko": "5분처럼 작은 한도를 정해 볼까요?"
+ },
+ {
+  "id": "y04",
+  "answer": "YES",
+  "en": "What will you do right after this?",
+  "ko": "이거 끝나고 바로 뭘 할 거예요?"
+ },
+ {
+  "id": "y05",
+  "answer": "YES",
+  "en": "Is there a quicker way to get what you need?",
+  "ko": "필요한 걸 더 빨리 얻는 방법이 있을까요?"
+ },
+ {
+  "id": "y06",
+  "answer": "YES",
+  "en": "Who are you here to reach?",
+  "ko": "누구에게 연락하려고 왔어요?"
+ },
+ {
+  "id": "y07",
+  "answer": "YES",
+  "en": "If the feed pulls you in, what will bring you back out?",
+  "ko": "피드에 빠져들면, 무엇이 다시 나오게 해 줄까요?"
+ },
+ {
+  "id": "y08",
+  "answer": "YES",
+  "en": "What does finished look like for this visit?",
+  "ko": "이번에는 어디까지 하면 끝인가요?"
+ },
+ {
+  "id": "y09",
+  "answer": "YES",
+  "en": "Can you go straight to it, without scrolling first?",
+  "ko": "스크롤 없이 바로 그곳으로 갈 수 있을까요?"
+ },
+ {
+  "id": "y10",
+  "answer": "YES",
+  "en": "When the reason runs out, will you notice?",
+  "ko": "이유가 끝나면 알아챌 수 있을까요?"
+ },
+ {
+  "id": "m01",
+  "answer": "MAYBE",
+  "en": "What would you do with the next ten minutes if you weren't here?",
+  "ko": "여기 오지 않았다면 다음 10분 동안 뭘 했을까요?"
+ },
+ {
+  "id": "m02",
+  "answer": "MAYBE",
+  "en": "What were you doing just before you picked up your phone?",
+  "ko": "휴대폰을 집기 직전에 뭘 하고 있었어요?"
+ },
+ {
+  "id": "m03",
+  "answer": "MAYBE",
+  "en": "Is this a break you chose, or one that just started?",
+  "ko": "스스로 고른 휴식인가요, 아니면 어쩌다 시작된 휴식인가요?"
+ },
+ {
+  "id": "m04",
+  "answer": "MAYBE",
+  "en": "How do you want to feel when you put the phone down?",
+  "ko": "휴대폰을 내려놓을 때 어떤 기분이고 싶어요?"
+ },
+ {
+  "id": "m05",
+  "answer": "MAYBE",
+  "en": "What is the smallest step toward your goal you could take instead?",
+  "ko": "대신 목표를 향해 내디딜 수 있는 가장 작은 걸음은 뭘까요?"
+ },
+ {
+  "id": "m06",
+  "answer": "MAYBE",
+  "en": "Could you be tired, hungry or bored?",
+  "ko": "혹시 피곤하거나, 배고프거나, 심심한 건 아닐까요?"
+ },
+ {
+  "id": "m07",
+  "answer": "MAYBE",
+  "en": "What would make the next few minutes well spent?",
+  "ko": "앞으로 몇 분을 잘 쓰려면 무엇이 필요할까요?"
+ },
+ {
+  "id": "m08",
+  "answer": "MAYBE",
+  "en": "Will you remember this in an hour?",
+  "ko": "한 시간 뒤에도 이걸 기억할까요?"
+ },
+ {
+  "id": "m09",
+  "answer": "MAYBE",
+  "en": "What are you hoping to find in there?",
+  "ko": "거기서 무엇을 찾고 싶어요?"
+ },
+ {
+  "id": "m10",
+  "answer": "MAYBE",
+  "en": "If you wait two minutes, will you still want it?",
+  "ko": "2분만 기다려도 여전히 열고 싶을까요?"
+ },
+ {
+  "id": "m11",
+  "answer": "MAYBE",
+  "en": "Is there one thing you've been putting off today?",
+  "ko": "오늘 미뤄 둔 일이 하나 있나요?"
+ },
+ {
+  "id": "m12",
+  "answer": "MAYBE",
+  "en": "Is there someone you'd rather talk to right now?",
+  "ko": "지금 더 이야기하고 싶은 사람이 있나요?"
+ },
+ {
+  "id": "m13",
+  "answer": "MAYBE",
+  "en": "If you go in, how long do you want to stay?",
+  "ko": "들어간다면 얼마나 있고 싶어요?"
+ },
+ {
+  "id": "m14",
+  "answer": "MAYBE",
+  "en": "What would a rested version of you choose?",
+  "ko": "푹 쉰 나라면 무엇을 고를까요?"
+ },
+ {
+  "id": "n01",
+  "answer": "NO",
+  "en": "What are you stepping away from right now?",
+  "ko": "지금 무엇에서 잠시 벗어나고 있나요?"
+ },
+ {
+  "id": "n02",
+  "answer": "NO",
+  "en": "What is the hard part of the thing you're avoiding?",
+  "ko": "피하고 있는 일에서 어려운 부분은 뭐예요?"
+ },
+ {
+  "id": "n03",
+  "answer": "NO",
+  "en": "Could you give it just the first two minutes?",
+  "ko": "그 일을 딱 2분만 해 볼 수 있을까요?"
+ },
+ {
+  "id": "n04",
+  "answer": "NO",
+  "en": "Away from the screen, what could boredom turn into?",
+  "ko": "화면에서 떨어지면 심심함이 무엇으로 바뀔 수 있을까요?"
+ },
+ {
+  "id": "n05",
+  "answer": "NO",
+  "en": "What would make the next step easier?",
+  "ko": "다음 걸음을 더 쉽게 만드는 건 뭘까요?"
+ },
+ {
+  "id": "n06",
+  "answer": "NO",
+  "en": "Is there a smaller version of the task you could start?",
+  "ko": "더 작게 시작할 수 있는 방법이 있을까요?"
+ },
+ {
+  "id": "n07",
+  "answer": "NO",
+  "en": "What do you need right now: rest, food, air or company?",
+  "ko": "지금 필요한 건 뭐예요? 휴식, 음식, 바깥 공기, 아니면 사람?"
+ },
+ {
+  "id": "n08",
+  "answer": "NO",
+  "en": "What could you finish before you check again?",
+  "ko": "다시 확인하기 전에 끝낼 수 있는 일은 뭘까요?"
+ },
+ {
+  "id": "n09",
+  "answer": "NO",
+  "en": "How will this choice feel tonight?",
+  "ko": "오늘 밤 이 선택은 어떻게 느껴질까요?"
+ },
+ {
+  "id": "n10",
+  "answer": "NO",
+  "en": "What is waiting for you that matters more than this?",
+  "ko": "이것보다 더 중요한 무엇이 기다리고 있나요?"
+ },
+ {
+  "id": "n11",
+  "answer": "NO",
+  "en": "If a friend felt this way, what would you tell them?",
+  "ko": "친구가 이런 기분이라면 뭐라고 말해 줄 거예요?"
+ },
+ {
+  "id": "n12",
+  "answer": "NO",
+  "en": "Could you stand up and stretch first?",
+  "ko": "먼저 일어나서 기지개를 켜 볼까요?"
+ },
+ {
+  "id": "n13",
+  "answer": "NO",
+  "en": "What would it take to begin, just a little?",
+  "ko": "아주 조금 시작하려면 무엇이 필요할까요?"
+ },
+ {
+  "id": "n14",
+  "answer": "NO",
+  "en": "Is the thing you're avoiding as big as it feels?",
+  "ko": "피하고 있는 그 일, 느껴지는 만큼 큰 일일까요?"
+ },
+ {
+  "id": "n15",
+  "answer": "NO",
+  "en": "Where could your phone rest for the next twenty minutes?",
+  "ko": "앞으로 20분 동안 휴대폰을 어디에 둘 수 있을까요?"
+ },
+ {
+  "id": "n16",
+  "answer": "NO",
+  "en": "What would make today feel like a good day?",
+  "ko": "오늘을 좋은 하루로 만드는 건 무엇일까요?"
+ }
+]

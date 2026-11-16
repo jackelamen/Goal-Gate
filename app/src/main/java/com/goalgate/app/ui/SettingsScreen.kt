@@ -7,7 +7,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -35,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -42,10 +47,10 @@ import androidx.compose.ui.unit.dp
 import com.goalgate.app.R
 import com.goalgate.app.GoalGateApp
 import com.goalgate.app.data.AppReset
-import com.goalgate.app.data.Difficulty
 import com.goalgate.app.data.Engine
-import com.goalgate.app.data.QuestionType
+import com.goalgate.app.data.Tone
 import com.goalgate.app.detection.Engines
+import com.goalgate.app.ui.theme.LocalAccent
 
 /** How many taps on the version number open the hidden debug screen. */
 private const val TAPS_TO_OPEN_DEBUG = 7
@@ -63,8 +68,7 @@ fun SettingsScreen(
 
     // Each value is kept twice: in Compose state (so the screen redraws)
     // and in Settings (so it is saved). The helpers below update both.
-    var difficulty by remember { mutableStateOf(settings.difficulty) }
-    var questionType by remember { mutableStateOf(settings.questionType) }
+    var tone by remember { mutableStateOf(settings.tone) }
     var cooldown by remember { mutableIntStateOf(settings.cooldownMinutes) }
     var timeCheck by remember { mutableIntStateOf(settings.sessionLimitMinutes) }
     var korean by remember { mutableStateOf(settings.koreanExplanations) }
@@ -79,59 +83,40 @@ fun SettingsScreen(
     ) {
         Spacer(Modifier.height(36.dp))
         Text(
-            withAccentFullStop(stringResource(R.string.settings_title)),
+            stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onBackground,
         )
 
-        // --- Difficulty ---
+        // --- Tone of the pause ---
         Spacer(Modifier.height(32.dp))
-        SectionLabel(stringResource(R.string.settings_difficulty))
+        SectionLabel(stringResource(R.string.settings_tone))
         Spacer(Modifier.height(12.dp))
         ChoiceRow(
-            options = Difficulty.entries,
-            selected = difficulty,
-            label = {
-                stringResource(
-                    when (it) {
-                        Difficulty.EASY -> R.string.difficulty_easy
-                        Difficulty.MEDIUM -> R.string.difficulty_medium
-                        Difficulty.HARD -> R.string.difficulty_hard
-                    }
-                )
-            },
-            onSelect = { difficulty = it; settings.difficulty = it },
+            options = Tone.entries,
+            selected = tone,
+            label = { stringResource(if (it == Tone.GENTLE) R.string.tone_gentle else R.string.tone_direct) },
+            onSelect = { tone = it; settings.tone = it },
+        )
+        Text(
+            stringResource(R.string.settings_tone_hint),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 10.dp),
         )
 
-        // --- Question type ---
-        Spacer(Modifier.height(32.dp))
-        SectionLabel(stringResource(R.string.settings_type))
-        Spacer(Modifier.height(10.dp))
-        ChoiceRow(
-            options = QuestionType.entries,
-            selected = questionType,
-            label = {
-                stringResource(
-                    when (it) {
-                        QuestionType.VOCABULARY -> R.string.type_vocabulary
-                        QuestionType.GRAMMAR -> R.string.type_grammar
-                        QuestionType.BOTH -> R.string.type_both
-                    }
-                )
-            },
-            onSelect = { questionType = it; settings.questionType = it },
-        )
-
-        // --- Explanation language ---
-        Spacer(Modifier.height(32.dp))
-        SectionLabel(stringResource(R.string.settings_explanations))
-        Spacer(Modifier.height(12.dp))
-        ChoiceRow(
-            options = listOf(false, true),
-            selected = korean,
-            label = { stringResource(if (it) R.string.explanations_with_korean else R.string.explanations_english) },
-            onSelect = { korean = it; settings.koreanExplanations = it },
-        )
+        // --- Reflection lines in Korean too (only offered when the app is in English) ---
+        if (LocalConfiguration.current.locales[0].language != "ko") {
+            Spacer(Modifier.height(32.dp))
+            SectionLabel(stringResource(R.string.settings_explanations))
+            Spacer(Modifier.height(12.dp))
+            ChoiceRow(
+                options = listOf(false, true),
+                selected = korean,
+                label = { stringResource(if (it) R.string.explanations_with_korean else R.string.explanations_english) },
+                onSelect = { korean = it; settings.koreanExplanations = it },
+            )
+        }
 
         // --- Cooldown ---
         Spacer(Modifier.height(32.dp))
@@ -293,7 +278,7 @@ private fun LinkRow(title: String, description: String, onClick: () -> Unit) {
     }
 }
 
-/** A selectable card describing one detection engine. The chosen one carries the full stop. */
+/** A selectable card describing one detection engine. The chosen one has a border and an accent dot. */
 @Composable
 private fun EngineCard(title: String, description: String, selected: Boolean, onClick: () -> Unit) {
     val borderColor by animateColorAsState(
@@ -316,8 +301,9 @@ private fun EngineCard(title: String, description: String, selected: Boolean, on
             Spacer(Modifier.height(3.dp))
             Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        // The lapis full stop marks the selected engine.
+        // A filled accent dot marks the selected engine (with the border, so colour is not the only sign).
         val dot by animateFloatAsState(if (selected) 1f else 0f, label = "engineDot")
-        FullStop(Modifier.graphicsLayer { alpha = dot; scaleX = dot; scaleY = dot })
+        val accent = LocalAccent.current.accent
+        Box(Modifier.size(10.dp).graphicsLayer { alpha = dot; scaleX = dot; scaleY = dot }.background(accent, CircleShape))
     }
 }

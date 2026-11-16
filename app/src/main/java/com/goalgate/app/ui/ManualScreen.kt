@@ -28,14 +28,14 @@ import com.goalgate.app.R
  */
 private val SECTIONS = listOf(
     R.string.manual_how_t to R.string.manual_how,
+    R.string.manual_goals_t to R.string.manual_goals,
     R.string.manual_apps_t to R.string.manual_apps,
-    R.string.manual_answer_t to R.string.manual_answer,
+    R.string.manual_pause_t to R.string.manual_pause,
+    R.string.manual_answers_t to R.string.manual_answers,
     R.string.manual_close_t to R.string.manual_close,
     R.string.manual_cooldown_t to R.string.manual_cooldown,
     R.string.manual_timecheck_t to R.string.manual_timecheck,
-    R.string.manual_review_t to R.string.manual_review,
-    R.string.manual_stats_t to R.string.manual_stats,
-    R.string.manual_level_t to R.string.manual_level,
+    R.string.manual_reflections_t to R.string.manual_reflections,
     R.string.manual_widget_t to R.string.manual_widget,
     R.string.manual_engines_t to R.string.manual_engines,
     R.string.manual_trouble_t to R.string.manual_trouble,

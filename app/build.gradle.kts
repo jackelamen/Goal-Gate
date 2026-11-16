@@ -5,6 +5,14 @@ plugins {
     id("com.google.devtools.ksp")             // generates the Room database code
 }
 
+// The Android runtime Robolectric 4.14.1 uses for SDK 35 (MigrationTest runs on it).
+val robolectricAndroid: Configuration by configurations.creating
+val robolectricDir = layout.buildDirectory.dir("robolectric-android")
+val copyRobolectricAndroid = tasks.register<Copy>("copyRobolectricAndroid") {
+    from(robolectricAndroid)
+    into(robolectricDir)
+}
+
 android {
     namespace = "com.goalgate.app"
     compileSdk = 35
@@ -48,6 +56,19 @@ android {
         compose = true
     }
 
+    // Robolectric (MigrationTest) needs the app's resources and manifest.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        // Robolectric needs a copy of Android to run on. Gradle downloads it (see
+        // "robolectricAndroid" below) and Robolectric runs offline from that copy,
+        // so tests work the same behind a proxy or without network access.
+        unitTests.all {
+            it.dependsOn(copyRobolectricAndroid)
+            it.systemProperty("robolectric.offline", "true")
+            it.systemProperty("robolectric.dependency.dir", robolectricDir.get().asFile.absolutePath)
+        }
+    }
+
     // Only English and Korean: leave out the other languages that libraries bring along.
     androidResources {
         localeFilters += listOf("en", "ko")
@@ -74,4 +95,8 @@ dependencies {
     // Unit tests (run on your computer, no phone needed)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+    // Robolectric runs the database update test (MigrationTest) without a phone.
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
+    robolectricAndroid("org.robolectric:android-all-instrumented:15-robolectric-12650502-i7")
 }

@@ -12,8 +12,7 @@ import com.goalgate.app.ui.GoalGateWidget
  * "Reset GoalGate" in Settings: deletes everything GoalGate has stored and
  * sends the user back to the start of setup.
  *
- * Deleted: chosen apps, every answer and trigger, review list, streak and
- * stats, all settings, cooldowns and time-check clocks.
+ * Deleted: goals, chosen apps, every pause and answer, reflections, all settings, cooldowns and time-check clocks.
  * Not changed: permissions the user granted in Android settings. An app
  * cannot switch those off itself; setup simply skips the ones already on.
  */
@@ -30,7 +29,7 @@ object AppReset {
             GateController.forgetEverything()
             Handler(Looper.getMainLooper()).post {
                 Engines.apply(app)           // stops detection until setup is finished again
-                GoalGateWidget.refresh(app)  // the widget's streak goes back to 0
+                GoalGateWidget.refresh(app)  // the widget shows "write a goal" again
                 onDone()
             }
         }

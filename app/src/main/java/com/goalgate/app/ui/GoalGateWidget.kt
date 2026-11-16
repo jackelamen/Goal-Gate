@@ -7,23 +7,22 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
-import com.goalgate.app.R
 import com.goalgate.app.GoalGateApp
-import com.goalgate.app.data.QuestionBank
-import com.goalgate.app.data.computeStats
-import com.goalgate.app.data.questionOfTheDay
+import com.goalgate.app.R
+import com.goalgate.app.data.todaysGoal
 import java.time.LocalDate
 
 /**
- * The home-screen widget: the daily streak and today's question.
- * Tapping it opens that question in practice mode.
+ * The home-screen widget: today's goal and a "Check in" button that opens
+ * the Goals tab. "Today's goal" is the goal picked most recently today on a
+ * pause, or the user's first goal (see todaysGoal).
  *
  * Widgets are drawn by the launcher, not by GoalGate, so they use an XML
  * layout (res/layout/widget_goalgate.xml) filled in with RemoteViews,
  * instead of Compose.
  *
  * Android refreshes it every hour (res/xml/goalgate_widget_info.xml), and
- * GoalGate also refreshes it after every answer (see [refresh]).
+ * GoalGate also refreshes it after every answer and goal change (see [refresh]).
  */
 class GoalGateWidget : AppWidgetProvider() {
 
@@ -43,28 +42,23 @@ class GoalGateWidget : AppWidgetProvider() {
     }
 
     private fun buildViews(context: Context, app: GoalGateApp): RemoteViews {
-        val today = LocalDate.now()
-        val streak = computeStats(app.database.triggerLogDao().getAll(), today).streakDays
-        val question = questionOfTheDay(
-            QuestionBank.load(context), app.settings.difficulty, app.settings.questionType, today.toEpochDay(),
+        val goal = todaysGoal(
+            app.database.goalDao().getAll(),
+            app.database.triggerLogDao().getAll(),
+            LocalDate.now(),
         )
-
         val views = RemoteViews(context.packageName, R.layout.widget_goalgate)
-        views.setTextViewText(R.id.widget_streak, streak.toString())
-        views.setTextViewText(
-            R.id.widget_streak_label,
-            context.resources.getQuantityString(R.plurals.stats_streak_label, streak),
-        )
-        views.setTextViewText(R.id.widget_question, question.question)
+        views.setTextViewText(R.id.widget_goal, goal?.text ?: context.getString(R.string.widget_no_goal))
 
-        // Tap anywhere: answer today's question in practice mode.
+        // Tap anywhere: open the Goals tab.
         val tap = PendingIntent.getActivity(
             context,
             0,
-            QuestionActivity.practiceIntent(context, question.id, fromWidget = true),
+            MainActivity.goalsIntent(context),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         views.setOnClickPendingIntent(R.id.widget_root, tap)
+        views.setOnClickPendingIntent(R.id.widget_check_in, tap)
         return views
     }
 

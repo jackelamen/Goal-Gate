@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The summit mark for the widget: a white ridge and the signal-orange peak dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="15dp"
+    android:viewportWidth="34"
+    android:viewportHeight="26">
+    <path
+        android:pathData="M1,23.9 L10.2,15.6 L14.3,18.7 L22.4,9.4 L33,23.9"
+        android:strokeWidth="2.2"
+        android:strokeColor="#D9FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="#FFFF6A2B"
+        android:pathData="M22.4,3.4 m-3.4,0 a3.4,3.4 0 1 0 6.8,0 a3.4,3.4 0 1 0 -6.8,0" />
+</vector>

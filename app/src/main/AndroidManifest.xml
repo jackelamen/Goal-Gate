@@ -57,7 +57,7 @@
         <!-- The full-screen pause with one question. It lives in its own task
              (taskAffinity="") and is hidden from the recent apps list. -->
         <activity
-            android:name=".ui.QuestionActivity"
+            android:name=".ui.PauseActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTask"

@@ -1,74 +1,63 @@
 package com.goalgate.app.ui
 
 import android.app.Activity
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import com.goalgate.app.ui.theme.LapisAccent
-import com.goalgate.app.ui.theme.LapisColors
-import com.goalgate.app.ui.theme.LapisDeep
-import com.goalgate.app.ui.theme.LapisGlow
+import com.goalgate.app.ui.theme.Contour
 import com.goalgate.app.ui.theme.LocalAccent
-import com.goalgate.app.ui.theme.SerifDisplay
+import com.goalgate.app.ui.theme.PineColors
+import com.goalgate.app.ui.theme.PineDeep
+import com.goalgate.app.ui.theme.PineGround
+import com.goalgate.app.ui.theme.SignalAccent
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.sin
 
 /*
- * THE LAPIS GROUND: where GoalGate shows its character.
+ * THE PINE GROUND: where GoalGate shows its character.
  *
- * Most screens are quiet paper. The moments that matter (the question, the
- * welcome, the streak) sit on a deep lapis blue instead, with two pieces of
- * typographic art behind the content:
+ * Most screens are quiet paper. The moments that matter (the pause, the
+ * welcome, the week card) sit on a deep pine ground instead, with faint
+ * contour lines behind the content, like the lines on a trail map around a
+ * summit. They never move: the only thing that breathes on these screens is
+ * the dot at the top of the summit mark.
  *
- *   1. A giant full stop, so big that only part of it fits on the screen.
- *      It is the app's signature dot, scaled up. It does not move.
- *   2. One large, pale italic word (see GhostWord). It is always shown
- *      whole, lined up with the text, and never sits behind other text.
- *
- * Both are only slightly lighter than the background, so they add depth
- * without competing with the text in front of them.
+ * The lines are drawn at 6% white (every fifth one a little stronger, as on a
+ * real map), so they give depth without competing with the text in front.
  */
 
 /**
- * Draws the lapis background art and switches the colours of everything
- * inside it: text becomes white, the main button becomes white, and the
- * accent becomes citron (lapis on lapis would be invisible).
+ * Draws the pine background and its contour lines, and switches the colours
+ * of everything inside it: text becomes white, the main button becomes white,
+ * and the accent becomes the signal orange.
  *
- * @param word        a large pale word drawn near the top, or null for none.
- *                    Leave the area under it empty.
+ * @param peak        where the summit of the contour lines sits, as fractions
+ *                    of the width and height. Keep it away from the main text.
  * @param fullScreen  true when this fills the whole window (it then also makes
  *                    the status bar icons light). Use false for a card.
  */
 @Composable
-fun LapisGround(
+fun HeroGround(
     modifier: Modifier = Modifier,
-    word: String? = null,
-    wordTop: Dp = 84.dp,
+    peak: Offset = Offset(0.86f, 0.78f),
     fullScreen: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -77,79 +66,61 @@ fun LapisGround(
     Box(
         modifier
             .clipToBounds()
-            // A gentle fall-off from blue to a deeper blue gives the flat colour some depth.
-            .background(Brush.verticalGradient(listOf(LapisColors.background, LapisDeep))),
+            .background(Brush.verticalGradient(listOf(PineGround, PineDeep))),
     ) {
-        Canvas(Modifier.matchParentSize()) {
-            // The giant full stop sits low on the right, mostly off the screen.
-            // It stays still: only the small dot in the header breathes, so there is one calm motion, not two.
-            val radius = size.width * 0.63f
-            val center = Offset(size.width * 1.02f, size.height - size.width * 0.18f)
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(LapisGlow.copy(alpha = 0.55f), LapisGlow.copy(alpha = 0.16f)),
-                    center = center,
-                    radius = radius,
-                ),
-                radius = radius,
-                center = center,
-            )
-        }
-
-        if (word != null) {
-            GhostWord(
-                text = word,
-                fontSize = 128.sp,
-                // Lined up with the left edge of the text in front of it.
-                modifier = Modifier.align(Alignment.TopStart).offset(x = 22.dp, y = wordTop),
-            )
-        }
-
-        // Everything in front uses the "on lapis" colours.
-        CompositionLocalProvider(LocalAccent provides LapisAccent) {
-            MaterialTheme(colorScheme = LapisColors, content = { content() })
+        Box(Modifier.matchParentSize().contourLines(peak))
+        // Everything in front uses the "on pine" colours.
+        CompositionLocalProvider(LocalAccent provides SignalAccent) {
+            MaterialTheme(colorScheme = PineColors, content = { content() })
         }
     }
 }
 
 /**
- * A large, pale, light italic word used as a piece of typography rather
- * than as something to read closely. Only use it on a lapis ground.
+ * Nested, slightly irregular rings around [peak], like the contour lines of
+ * a hill. The shapes come from fixed sine waves, so they are identical every
+ * time (no randomness) and are worked out once per size.
  */
-@Composable
-fun GhostWord(text: String, fontSize: TextUnit, modifier: Modifier = Modifier, fitWidth: Boolean = false) {
-    if (fitWidth) {
-        // Shrink the word if it would not fit the screen width (narrow phones,
-        // or a large system font size). It is decoration, so it should never
-        // push against the edge.
-        BoxWithConstraints(modifier) {
-            val density = LocalDensity.current
-            val maxSize = with(density) { maxWidth.toSp() } / (text.length * 0.47f).coerceAtLeast(1f)
-            val size = if (maxSize.value < fontSize.value) maxSize else fontSize
-            GhostWord(text, size)
+private fun Modifier.contourLines(peak: Offset): Modifier = drawWithCache {
+    val center = Offset(size.width * peak.x, size.height * peak.y)
+    val paths = contourPaths(size, center)
+    val thin = Stroke(width = 1.dp.toPx())
+    val index = Stroke(width = 1.4.dp.toPx())
+    onDrawBehind {
+        paths.forEachIndexed { i, path ->
+            val isIndex = i % 5 == 4
+            drawPath(path, Contour, alpha = if (isIndex) 0.11f else 0.06f, style = if (isIndex) index else thin)
         }
-        return
     }
-    Text(
-        text = text,
-        style = TextStyle(
-            fontFamily = SerifDisplay,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight(300),
-            fontSize = fontSize,
-            lineHeight = fontSize,
-            letterSpacing = (-0.03).em,
-        ),
-        color = Color.White.copy(alpha = 0.3f),
-        maxLines = 1,
-        softWrap = false,
-        modifier = modifier,
-    )
+}
+
+private fun contourPaths(size: Size, center: Offset): List<Path> {
+    val reach = max(size.width, size.height) * 1.25f
+    val step = max(size.width, size.height) * 0.052f
+    val rings = (reach / step).toInt().coerceAtMost(40)
+    return List(rings) { k ->
+        val base = step * (k + 1)
+        Path().apply {
+            val points = 96
+            for (p in 0..points) {
+                val t = (p.toFloat() / points) * 2f * PI.toFloat()
+                // Two slow waves bend each ring; they drift a little from ring to ring,
+                // so the slopes look steeper on one side, as on a real hill.
+                val wobble = 1f + 0.10f * sin(3f * t + k * 0.35f) + 0.06f * sin(5f * t - k * 0.6f) +
+                    0.05f * cos(2f * t + 1.3f)
+                val r = base * wobble
+                val x = center.x + r * cos(t) * 1.15f
+                val y = center.y + r * sin(t) * 0.9f
+                if (p == 0) moveTo(x, y) else lineTo(x, y)
+            }
+            close()
+        }
+    }
 }
 
 /**
  * Makes the status bar icons (clock, battery) light while a full-screen
- * lapis ground is showing, and puts them back afterwards.
+ * pine ground is showing, and puts them back afterwards.
  */
 @Composable
 private fun LightStatusBarIcons() {

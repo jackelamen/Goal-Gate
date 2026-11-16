@@ -6,9 +6,11 @@ import java.util.Locale
 /** The two ways GoalGate can detect that an app was opened. */
 enum class Engine { USAGE, ACCESSIBILITY }
 
-enum class Difficulty { EASY, MEDIUM, HARD }
-
-enum class QuestionType { VOCABULARY, GRAMMAR, BOTH }
+/**
+ * How the pause speaks after an answer. Gentle is softer; Direct is shorter
+ * and names the choice plainly. Neither one scolds.
+ */
+enum class Tone { GENTLE, DIRECT }
 
 /**
  * The user's choices from the Settings screen.
@@ -30,13 +32,9 @@ class Settings(context: Context) {
         get() = Engine.valueOf(prefs.getString("engine", Engine.USAGE.name)!!)
         set(value) = prefs.edit().putString("engine", value.name).apply()
 
-    var difficulty: Difficulty
-        get() = Difficulty.valueOf(prefs.getString("difficulty", Difficulty.EASY.name)!!)
-        set(value) = prefs.edit().putString("difficulty", value.name).apply()
-
-    var questionType: QuestionType
-        get() = QuestionType.valueOf(prefs.getString("questionType", QuestionType.BOTH.name)!!)
-        set(value) = prefs.edit().putString("questionType", value.name).apply()
+    var tone: Tone
+        get() = Tone.entries.firstOrNull { it.name == prefs.getString("tone", null) } ?: Tone.GENTLE
+        set(value) = prefs.edit().putString("tone", value.name).apply()
 
     /** After "Continue", don't ask again for the same app for this many minutes (1, 5 or 15). */
     var cooldownMinutes: Int
@@ -52,17 +50,13 @@ class Settings(context: Context) {
         set(value) = prefs.edit().putInt("sessionLimitMinutes", value).apply()
 
     /**
-     * Show each explanation in Korean too. On by default when the phone's
-     * language is Korean.
+     * When the app is in English, also show each reflection line in Korean.
+     * On by default when the phone's language is Korean. (When the app itself
+     * is in Korean, the lines are already Korean and this is not used.)
      */
     var koreanExplanations: Boolean
         get() = prefs.getBoolean("koreanExplanations", Locale.getDefault().language == "ko")
         set(value) = prefs.edit().putBoolean("koreanExplanations", value).apply()
-
-    /** The difficulty suggestion on the Stats screen stays hidden until this time (ms). */
-    var adviceHiddenUntil: Long
-        get() = prefs.getLong("adviceHiddenUntil", 0L)
-        set(value) = prefs.edit().putLong("adviceHiddenUntil", value).apply()
 
     /** Has the user read and accepted the accessibility disclosure? */
     var accessibilityDisclosureAccepted: Boolean

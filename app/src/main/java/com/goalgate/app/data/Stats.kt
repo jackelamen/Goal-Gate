@@ -1,89 +1,112 @@
 package com.goalgate.app.data
 
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 
 /*
- * Small, plain calculations used by the Stats and Debug screens.
- * They take a list of log rows and return numbers. No Android code here,
- * so they are easy to read and easy to unit test.
+ * Small, plain calculations used by the Reflections and Debug screens and by
+ * the pause. They take a list of log rows and return numbers. No Android code
+ * here, so they are easy to read and easy to unit test.
+ *
+ * GoalGate counts things; it never scores them. There are no streaks,
+ * percentages or grades.
  */
 
-/** The numbers shown on the Stats screen. */
-data class Stats(
-    val answered: Int,        // questions answered
-    val percentCorrect: Int,  // 0-100
-    val closes: Int,          // times the user chose Close instead of Continue
-    val streakDays: Int,      // days in a row with at least one answer
-)
+private const val WEEK_MS = 7 * 24 * 60 * 60 * 1000L
 
-fun computeStats(
-    logs: List<TriggerLog>,
-    today: LocalDate = LocalDate.now(),
-    zone: ZoneId = ZoneId.systemDefault(),
-): Stats {
-    val answeredLogs = logs.filter { it.correct != null }
-    val correct = answeredLogs.count { it.correct == true }
-    val percent = if (answeredLogs.isEmpty()) 0 else Math.round(correct * 100f / answeredLogs.size)
+/** Part of the day, for the weekly sentence ("mostly in the evening"). */
+enum class DayPart { MORNING, AFTERNOON, EVENING, NIGHT }
 
-    val days = answeredDays(logs, zone)
-
-    return Stats(
-        answered = answeredLogs.size,
-        percentCorrect = percent,
-        closes = logs.count { it.action == TriggerLog.ACTION_CLOSE },
-        streakDays = computeStreak(days, today),
-    )
+/** 05:00-11:59 morning, 12:00-16:59 afternoon, 17:00-21:59 evening, otherwise night. */
+fun dayPartOf(hour: Int): DayPart = when (hour) {
+    in 5..11 -> DayPart.MORNING
+    in 12..16 -> DayPart.AFTERNOON
+    in 17..21 -> DayPart.EVENING
+    else -> DayPart.NIGHT
 }
 
-/** The set of calendar days on which the user answered at least one question. */
-fun answeredDays(logs: List<TriggerLog>, zone: ZoneId = ZoneId.systemDefault()): Set<LocalDate> =
-    logs.filter { it.correct != null }
-        .map { Instant.ofEpochMilli(it.openedAt).atZone(zone).toLocalDate() }
-        .toSet()
-
-/**
- * Counts how many days in a row the user has answered a question.
- * The streak is still alive if the last answer was yesterday
- * (today is not over yet), but it is 0 if a whole day was missed.
- */
-fun computeStreak(days: Set<LocalDate>, today: LocalDate): Int {
-    var day = if (today in days) today else today.minusDays(1)
-    var streak = 0
-    while (day in days) {
-        streak++
-        day = day.minusDays(1)
-    }
-    return streak
-}
+/** How often one goal was picked this week. [goalId] null = "None right now". */
+data class GoalCount(val goalId: Long?, val times: Int)
 
 /** One app's week: how many times GoalGate paused it, and how often the user chose Close. */
 data class AppWeek(val packageName: String, val pauses: Int, val closes: Int)
 
 /**
- * Groups the last 7 days of triggers by app, busiest first.
- * Every trigger counts as a pause (app opened or time check).
+ * The one plain sentence at the top of Reflections:
+ * "This week you answered No 6 times. Most of those were in the evening."
+ * [mostly] is null when no part of the day stands out.
  */
-fun weekByApp(logs: List<TriggerLog>, now: Long): List<AppWeek> {
-    val weekAgo = now - 7 * 24 * 60 * 60 * 1000L
-    return logs.filter { it.openedAt >= weekAgo }
+data class WeekSentence(val answer: Answer, val times: Int, val mostly: DayPart?)
+
+/** Everything the Reflections screen shows for the last seven days. */
+data class Week(
+    val pauses: Int,
+    val yes: Int,
+    val maybe: Int,
+    val no: Int,
+    val closes: Int,
+    val continues: Int,
+    val goals: List<GoalCount>,
+    val apps: List<AppWeek>,
+    val sentence: WeekSentence?,
+) {
+    val answered get() = yes + maybe + no
+}
+
+/** The rows from the last seven days (up to [now]). */
+fun lastWeek(logs: List<TriggerLog>, now: Long): List<TriggerLog> =
+    logs.filter { it.openedAt in (now - WEEK_MS)..now }
+
+fun computeWeek(logs: List<TriggerLog>, now: Long, zone: ZoneId = ZoneId.systemDefault()): Week {
+    val week = lastWeek(logs, now)
+    val answered = week.filter { answerOf(it.answer) != null }
+    val count = { a: Answer -> answered.count { answerOf(it.answer) == a } }
+    return Week(
+        pauses = week.size,
+        yes = count(Answer.YES),
+        maybe = count(Answer.MAYBE),
+        no = count(Answer.NO),
+        closes = week.count { it.action == TriggerLog.ACTION_CLOSE },
+        continues = week.count { it.action == TriggerLog.ACTION_CONTINUE },
+        goals = answered
+            .groupBy { it.goalId }
+            .map { (id, rows) -> GoalCount(id, rows.size) }
+            // Busiest first; "None right now" after the goals when tied.
+            .sortedWith(compareByDescending<GoalCount> { it.times }.thenBy { it.goalId == null }.thenBy { it.goalId }),
+        apps = weekByApp(week, now),
+        sentence = weekSentence(answered, zone),
+    )
+}
+
+/**
+ * Picks the answer given most often this week. On a tie, "No" comes first,
+ * then "Maybe": those are the ones worth noticing. Adds the part of the day
+ * when at least half of those answers fell in it (and there are 3 or more).
+ */
+fun weekSentence(answered: List<TriggerLog>, zone: ZoneId = ZoneId.systemDefault()): WeekSentence? {
+    val byAnswer = answered.groupBy { answerOf(it.answer) }
+    val top = listOf(Answer.NO, Answer.MAYBE, Answer.YES)
+        .maxByOrNull { byAnswer[it]?.size ?: 0 } ?: return null
+    val rows = byAnswer[top].orEmpty()
+    if (rows.isEmpty()) return null
+    val parts = rows.groupingBy { dayPartOf(Instant.ofEpochMilli(it.openedAt).atZone(zone).hour) }.eachCount()
+    val (part, times) = parts.maxByOrNull { it.value }!!
+    val mostly = if (rows.size >= 3 && times * 2 >= rows.size) part else null
+    return WeekSentence(top, rows.size, mostly)
+}
+
+/**
+ * Groups the last 7 days of pauses by app, busiest first.
+ * Every pause counts (app opened or time check).
+ */
+fun weekByApp(logs: List<TriggerLog>, now: Long): List<AppWeek> =
+    lastWeek(logs, now)
         .groupBy { it.packageName }
         .map { (packageName, rows) ->
             AppWeek(packageName, pauses = rows.size, closes = rows.count { it.action == TriggerLog.ACTION_CLOSE })
         }
         .sortedWith(compareByDescending<AppWeek> { it.pauses }.thenBy { it.packageName })
-}
 
-/**
- * Gentle escalation: the more often the user opens the same app within an
- * hour, the longer they wait before "Continue" can be tapped.
- * "Close" is always available straight away; this is a pause, not a block.
- *
- * @param opensThisHour how many times the app was opened in the last hour,
- *                      including this time.
- * @return seconds to wait before "Continue" works.
- */
 /**
  * How many times an app was opened in the last hour, including this time.
  *
@@ -96,50 +119,25 @@ fun weekByApp(logs: List<TriggerLog>, now: Long): List<AppWeek> {
 fun opensThisHour(earlierOpenTimes: List<Long>, currentOpenedAt: Long): Int =
     earlierOpenTimes.filter { it != currentOpenedAt }.distinct().size + 1
 
+/**
+ * Gentle escalation: the more often the user opens the same app within an
+ * hour, the longer they wait before "Continue" can be tapped.
+ * "Close" is always available straight away; this is a pause, not a block.
+ *
+ * @param opensThisHour how many times the app was opened in the last hour,
+ *                      including this time.
+ * @return seconds to wait before "Continue" works.
+ */
 fun continueDelaySeconds(opensThisHour: Int): Int = when {
     opensThisHour >= 5 -> 10
     opensThisHour >= 3 -> 5
     else -> 0
 }
 
-/** A suggestion to change the difficulty (see [adviseDifficulty]). */
-data class DifficultyAdvice(
-    val suggested: Difficulty,
-    val percentCorrect: Int,
-    val moveUp: Boolean,
-)
-
-/** How many answers at the current level are needed before giving advice. */
-const val ADVICE_MIN_ANSWERS = 20
-
-/**
- * Looks at the last 7 days of answers at the [current] difficulty.
- *  - 85% or more correct: suggest the next level up.
- *  - 50% or less correct: suggest the level below.
- * Returns null when there are fewer than [ADVICE_MIN_ANSWERS] answers,
- * when the score is in between, or when there is no level to move to.
- */
-fun adviseDifficulty(logs: List<TriggerLog>, current: Difficulty, now: Long): DifficultyAdvice? {
-    val weekAgo = now - 7 * 24 * 60 * 60 * 1000L
-    val answers = logs.filter {
-        it.correct != null && it.openedAt >= weekAgo && difficultyOfId(it.questionId) == current
-    }
-    if (answers.size < ADVICE_MIN_ANSWERS) return null
-    val percent = Math.round(answers.count { it.correct == true } * 100f / answers.size)
-    val levels = Difficulty.entries
-    return when {
-        percent >= 85 && current != Difficulty.HARD ->
-            DifficultyAdvice(levels[current.ordinal + 1], percent, moveUp = true)
-        percent <= 50 && current != Difficulty.EASY ->
-            DifficultyAdvice(levels[current.ordinal - 1], percent, moveUp = false)
-        else -> null
-    }
-}
-
 /**
  * Returns the value below which [percent] % of the numbers fall
  * ("nearest rank" method). percentile(list, 50) is the median.
- * Returns null for an empty list.
+ * Returns null for an empty list. (Used by the hidden Debug screen.)
  */
 fun percentile(values: List<Long>, percent: Int): Long? {
     if (values.isEmpty()) return null

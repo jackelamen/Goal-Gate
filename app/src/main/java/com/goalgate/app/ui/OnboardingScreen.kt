@@ -30,7 +30,16 @@ import com.goalgate.app.detection.Permissions
 import com.goalgate.app.ui.theme.LocalAccent
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.res.pluralStringResource
+import com.goalgate.app.data.Goal
+import com.goalgate.app.data.activeGoals
+import com.goalgate.app.data.canAddGoal
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,7 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.goalgate.app.R
 
 /** The screens of the first-run setup, in order. */
-private enum class Step { WELCOME, OVERLAY, USAGE, NOTIFICATIONS, BATTERY, APPS, READY }
+private enum class Step { WELCOME, OVERLAY, USAGE, NOTIFICATIONS, BATTERY, GOALS, APPS, READY }
 
 /**
  * First-run setup. One thing per screen, so nobody needs other instructions:
@@ -68,6 +77,7 @@ private enum class Step { WELCOME, OVERLAY, USAGE, NOTIFICATIONS, BATTERY, APPS,
  *   USAGE          "Usage access"            (system settings, comes back by itself)
  *   NOTIFICATIONS  one tap on a system pop-up (Android 13+ only)
  *   BATTERY        one tap on a system pop-up
+ *   GOALS          write at least one goal (up to 5), each with an optional "why"
  *   APPS           choose at least one app
  *   READY          what to do next
  *
@@ -139,6 +149,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
             )
             Step.NOTIFICATIONS -> NotificationStep(number, numbered.size, onDone = { advanceFrom(Step.NOTIFICATIONS) })
             Step.BATTERY -> BatteryStep(number, numbered.size, onDone = { advanceFrom(Step.BATTERY) })
+            Step.GOALS -> GoalsStep(number, numbered.size, onDone = { advanceFrom(Step.GOALS) })
             Step.APPS -> AppsStep(number, numbered.size, onDone = { advanceFrom(Step.APPS) })
             Step.READY -> ReadyStep(onFinished)
         }
@@ -168,7 +179,7 @@ private fun StepLayout(
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
         ) {
             Text(
-                withAccentFullStop(title),
+                title,
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -181,8 +192,8 @@ private fun StepLayout(
                     verticalAlignment = Alignment.Top,
                     modifier = Modifier.fillMaxWidth().card().padding(18.dp),
                 ) {
-                    FullStop(Modifier.padding(top = 0.dp))
-                    Spacer(Modifier.width(6.dp))
+                    Box(Modifier.padding(top = 9.dp).size(7.dp).background(LocalAccent.current.accent, CircleShape))
+                    Spacer(Modifier.width(12.dp))
                     Text(how, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
@@ -302,15 +313,16 @@ private fun AppsStep(number: Int, total: Int, onDone: () -> Unit) {
     }
 }
 
-/** The last screen: what happens next, named after an app the user chose. */
+/** The last screen: a short summary, and a note that goals can be edited any time. */
 @Composable
 private fun ReadyStep(onFinished: () -> Unit) {
     val context = LocalContext.current
-    val dao = (context.applicationContext as GoalGateApp).database.selectedAppDao()
-    val selected by dao.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val database = (context.applicationContext as GoalGateApp).database
+    val selected by database.selectedAppDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val goals by database.goalDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
     val firstApp = selected.firstOrNull()?.packageName?.let { appLabel(context, it) } ?: ""
 
-    LapisGround(Modifier.fillMaxSize()) {
+    HeroGround(Modifier.fillMaxSize()) {
         val softWhite = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.78f)
         Column(
             Modifier
@@ -323,14 +335,29 @@ private fun ReadyStep(onFinished: () -> Unit) {
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             ) {
-                FullStop(breathing = true)
-                Spacer(Modifier.height(16.dp))
+                SummitMark(breathing = true, drawIn = true, lineColor = softWhite)
+                Spacer(Modifier.height(18.dp))
                 Text(
-                    withAccentFullStop(stringResource(R.string.ob_ready_title)),
+                    stringResource(R.string.ob_ready_title),
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
+                // The summary: how many goals and apps, in one plain line each.
+                SectionLabel(
+                    pluralStringResource(R.plurals.ob_ready_goals, goals.size, goals.size),
+                    color = softWhite,
+                )
+                Spacer(Modifier.height(6.dp))
+                for (goal in activeGoals(goals)) {
+                    Text(
+                        goal.text,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(vertical = 3.dp),
+                    )
+                }
+                Spacer(Modifier.height(20.dp))
                 if (firstApp.isNotEmpty()) {
                     Text(
                         stringResource(R.string.ob_ready_body, firstApp),
@@ -343,6 +370,101 @@ private fun ReadyStep(onFinished: () -> Unit) {
             }
             PrimaryButton(stringResource(R.string.ob_finish), onClick = onFinished, modifier = Modifier.padding(vertical = 16.dp))
         }
+    }
+}
+
+/**
+ * Write your goals: at least one, up to five, each with an optional "why".
+ * The examples are only hints. Goals can be edited later in the Goals tab.
+ */
+@Composable
+private fun GoalsStep(number: Int, total: Int, onDone: () -> Unit) {
+    val context = LocalContext.current
+    val dao = (context.applicationContext as GoalGateApp).database.goalDao()
+    val all by dao.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val goals = activeGoals(all)
+    val scope = rememberCoroutineScope()
+    var adding by rememberSaveable { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<Goal?>(null) }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .readableWidth()
+            .padding(horizontal = 28.dp, vertical = 16.dp),
+    ) {
+        StepProgress(number, total)
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+            Spacer(Modifier.height(28.dp))
+            Text(
+                stringResource(R.string.ob_goals_title),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(stringResource(R.string.ob_goals_body), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(20.dp))
+            if (goals.isEmpty()) {
+                // Example goals: hints only, never required.
+                SectionLabel(stringResource(R.string.ob_goals_examples_label))
+                Spacer(Modifier.height(8.dp))
+                for (example in listOf(R.string.goal_example_1, R.string.goal_example_2, R.string.goal_example_3)) {
+                    Text(
+                        stringResource(example),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 2.dp),
+                    )
+                }
+            }
+            for (goal in goals) {
+                Column(
+                    Modifier
+                        .padding(bottom = 10.dp)
+                        .fillMaxWidth()
+                        .card()
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { editing = goal }
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                ) {
+                    FitBlock(goal.text, MaterialTheme.typography.titleLarge, MaterialTheme.colorScheme.onSurface)
+                    goal.why?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            if (canAddGoal(all)) {
+                Spacer(Modifier.height(6.dp))
+                QuietButton(
+                    "+ " + stringResource(if (goals.isEmpty()) R.string.ob_goals_add_first else R.string.goals_add),
+                    onClick = { adding = true },
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        PrimaryButton(
+            if (goals.isEmpty()) stringResource(R.string.ob_goals_need_one) else stringResource(R.string.ob_apps_done),
+            onClick = onDone,
+            enabled = goals.isNotEmpty(),
+        )
+    }
+
+    if (adding) {
+        GoalEditDialog(
+            initial = null,
+            onSave = { text, why -> scope.addGoal(dao, all, text, why); adding = false },
+            onDelete = null,
+            onDismiss = { adding = false },
+        )
+    }
+    editing?.let { goal ->
+        GoalEditDialog(
+            initial = goal,
+            onSave = { text, why -> scope.launch { dao.update(listOf(goal.copy(text = text, why = why))) }; editing = null },
+            onDelete = { scope.launch { dao.delete(goal) }; editing = null },
+            onDismiss = { editing = null },
+        )
     }
 }
 
@@ -386,12 +508,12 @@ private fun appLabel(context: Context, packageName: String): String = try {
 }
 
 /**
- * Step 0: the first thing a new user sees. One big sentence on the lapis
- * ground, ending in the citron full stop.
+ * Step 0: the first thing a new user sees. One sentence on the pine ground,
+ * with the summit mark drawing itself in above it.
  */
 @Composable
 private fun WelcomeStep(onNext: () -> Unit) {
-    LapisGround(Modifier.fillMaxSize()) {
+    HeroGround(Modifier.fillMaxSize(), peak = Offset(0.8f, 0.22f)) {
         val softWhite = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.78f)
         Column(
             Modifier
@@ -402,8 +524,8 @@ private fun WelcomeStep(onNext: () -> Unit) {
         ) {
             // The name of the app, small, at the top.
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(64.dp)) {
-                FullStop(breathing = true)
-                Spacer(Modifier.width(8.dp))
+                SummitMark(breathing = true, drawIn = true, lineColor = softWhite)
+                Spacer(Modifier.width(10.dp))
                 SectionLabel(stringResource(R.string.app_name), color = MaterialTheme.colorScheme.onBackground)
             }
 
@@ -411,19 +533,16 @@ private fun WelcomeStep(onNext: () -> Unit) {
                 verticalArrangement = Arrangement.Bottom,
                 modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             ) {
-                // The large pale word sits directly above the headline, in the
-                // same flow, so it can never overlap it on short screens.
-                GhostWord(stringResource(R.string.onboarding_word), fontSize = 110.sp, fitWidth = true, modifier = Modifier.offset(x = (-4).dp))
                 // The headline is a little smaller on narrow screens (Z Fold cover, small phones).
                 BoxWithConstraints(Modifier.fillMaxWidth()) {
                     val narrow = maxWidth < 360.dp
                     val korean = LocalConfiguration.current.locales[0].language == "ko"
                     Text(
-                        withAccentFullStop(stringResource(R.string.onboarding_title)),
+                        stringResource(R.string.onboarding_title),
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            fontSize = if (narrow) 40.sp else 50.sp,
-                            lineHeight = if (narrow) 46.sp else 56.sp,
-                            letterSpacing = if (korean) 0.sp else (-1.2).sp,
+                            fontSize = if (narrow) 38.sp else if (korean) 40.sp else 48.sp,
+                            lineHeight = if (narrow) 44.sp else if (korean) 52.sp else 54.sp,
+                            letterSpacing = if (korean) 0.sp else (-0.8).sp,
                         ),
                         color = MaterialTheme.colorScheme.onBackground,
                     )
@@ -445,4 +564,3 @@ private fun WelcomeStep(onNext: () -> Unit) {
         }
     }
 }
-

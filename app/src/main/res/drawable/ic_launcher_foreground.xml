@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher icon: a white serif W and one citron full stop, on lapis. -->
+<!-- Launcher icon: the summit mark. A white ridge rising to one peak, with the
+     signal-orange dot above it, on the pine ground (ic_launcher.xml). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M50.79 44.64 42.53 67.64H40.79L32.91 42.08L30 41.23V40.66H41.51V41.23L38.18 42.04L44.22 62.46L43.05 62.99L50.95 40.36H52.86L61.29 62.52L60.38 62.59L65.77 42.12L62.33 41.23V40.66H70V41.23L67.14 42.17L60 67.64H58.26L49.49 45.39Z" />
+        android:pathData="M31,67 L44.8,54.4 L50.3,59.2 L61.4,44.6 L77,67"
+        android:strokeWidth="3.4"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
     <path
-        android:fillColor="#FFE4F45E"
-        android:pathData="M75,64.2 m-3.4,0 a3.4,3.4 0 1 0 6.8,0 a3.4,3.4 0 1 0 -6.8,0" />
+        android:fillColor="#FFFF6A2B"
+        android:pathData="M61.4,35.6 m-4.4,0 a4.4,4.4 0 1 0 8.8,0 a4.4,4.4 0 1 0 -8.8,0" />
 </vector>

@@ -1,13 +1,19 @@
 package com.goalgate.app.ui
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,7 +32,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,17 +55,36 @@ import com.goalgate.app.ui.theme.LocalAccent
 import com.goalgate.app.ui.theme.GoalGateTheme
 
 /**
- * The main window of the app. It holds every screen except the question
- * screen (that one is QuestionActivity, because it opens on top of other apps).
+ * The main window of the app. It holds every screen except the pause
+ * screen (that one is PauseActivity, because it opens on top of other apps).
  */
 class MainActivity : ComponentActivity() {
+
+    /** Set when the widget's "Check in" asks for the Goals tab; AppRoot clears it once used. */
+    private var openGoals by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        openGoals = intent?.getBooleanExtra(EXTRA_OPEN_GOALS, false) == true
         setContent {
-            GoalGateTheme { AppRoot() }
+            GoalGateTheme { AppRoot(openGoals = openGoals, onGoalsOpened = { openGoals = false }) }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_GOALS, false)) openGoals = true
+    }
+
+    companion object {
+        private const val EXTRA_OPEN_GOALS = "openGoals"
+
+        /** Opens GoalGate on the Goals tab (used by the widget's "Check in"). */
+        fun goalsIntent(context: Context): Intent =
+            Intent(context, MainActivity::class.java)
+                .putExtra(EXTRA_OPEN_GOALS, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
 
     /** Every time the app comes back to the front, make sure the right engine is running. */
@@ -74,14 +98,14 @@ class MainActivity : ComponentActivity() {
 private enum class Screen { ONBOARDING, HOME, DISCLOSURE, DEBUG, MANUAL, LEGAL }
 
 /** The four tabs inside HOME. */
-private enum class Tab { APPS, REVIEW, STATS, SETTINGS }
+private enum class Tab { GOALS, APPS, REFLECTIONS, SETTINGS }
 
 /**
  * Decides which screen is visible. Navigation here is just one variable:
  * change [screen] and Compose shows the matching screen.
  */
 @Composable
-private fun AppRoot() {
+private fun AppRoot(openGoals: Boolean, onGoalsOpened: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as GoalGateApp
 
@@ -90,7 +114,18 @@ private fun AppRoot() {
     }
     // Where to return to after the accessibility disclosure.
     var screenBeforeDisclosure by rememberSaveable { mutableStateOf(Screen.HOME) }
-    var tab by rememberSaveable { mutableStateOf(Tab.APPS) }
+    var tab by rememberSaveable { mutableStateOf(Tab.GOALS) }
+
+    // The widget's "Check in" opens the Goals tab (once setup is finished).
+    LaunchedEffect(openGoals) {
+        if (openGoals) {
+            if (screen != Screen.ONBOARDING) {
+                tab = Tab.GOALS
+                screen = Screen.HOME
+            }
+            onGoalsOpened()
+        }
+    }
 
     // Shows the disclosure first; only after "I agree" do we open system settings.
     val requestAccessibility = {
@@ -109,7 +144,7 @@ private fun AppRoot() {
                     onFinished = {
                         app.settings.onboardingDone = true
                         Engines.apply(context)
-                        tab = Tab.APPS
+                        tab = Tab.GOALS
                         screen = Screen.HOME
                     },
                 )
@@ -123,7 +158,7 @@ private fun AppRoot() {
                     onOpenLegal = { screen = Screen.LEGAL },
                     onReset = {
                         // Everything is deleted: start again from the first setup screen.
-                        tab = Tab.APPS
+                        tab = Tab.GOALS
                         screen = Screen.ONBOARDING
                     },
                 )
@@ -180,9 +215,9 @@ private fun HomeScreen(
             modifier = Modifier.weight(1f).statusBarsPadding(),
         ) { current ->
             when (current) {
+                Tab.GOALS -> GoalsScreen()
                 Tab.APPS -> AppPickerScreen()
-                Tab.REVIEW -> ReviewScreen()
-                Tab.STATS -> StatsScreen()
+                Tab.REFLECTIONS -> ReflectionsScreen()
                 Tab.SETTINGS -> SettingsScreen(onRequestAccessibility, onOpenDebug, onOpenManual, onOpenLegal, onReset)
             }
         }
@@ -196,9 +231,9 @@ private fun HomeScreen(
                 .navigationBarsPadding(),
         ) {
             Row(Modifier.readableWidth()) {
+                TabButton(stringResource(R.string.tab_goals), tab == Tab.GOALS, Modifier.weight(1f)) { onTabChange(Tab.GOALS) }
                 TabButton(stringResource(R.string.tab_apps), tab == Tab.APPS, Modifier.weight(1f)) { onTabChange(Tab.APPS) }
-                TabButton(stringResource(R.string.tab_review), tab == Tab.REVIEW, Modifier.weight(1f)) { onTabChange(Tab.REVIEW) }
-                TabButton(stringResource(R.string.tab_stats), tab == Tab.STATS, Modifier.weight(1f)) { onTabChange(Tab.STATS) }
+                TabButton(stringResource(R.string.tab_reflections), tab == Tab.REFLECTIONS, Modifier.weight(1f)) { onTabChange(Tab.REFLECTIONS) }
                 TabButton(stringResource(R.string.tab_settings), tab == Tab.SETTINGS, Modifier.weight(1f)) { onTabChange(Tab.SETTINGS) }
             }
         }
@@ -211,8 +246,10 @@ private fun TabButton(text: String, selected: Boolean, modifier: Modifier, onCli
         if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "tabColor",
     )
-    // The selected tab is marked by a small full stop that grows from nothing.
-    val dotSize by animateDpAsState(if (selected) 5.dp else 0.dp, label = "tabDot")
+    // The selected tab is marked by a tiny peak (the summit mark, reduced to its
+    // ridge) that rises from nothing.
+    val rise by animateFloatAsState(if (selected) 1f else 0f, label = "tabPeak")
+    val accent = LocalAccent.current.accent
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -222,8 +259,13 @@ private fun TabButton(text: String, selected: Boolean, modifier: Modifier, onCli
     ) {
         FitText(text.uppercase(), MaterialTheme.typography.labelMedium, color, minFontSize = 8.sp)
         Spacer(Modifier.height(7.dp))
-        Box(Modifier.height(5.dp), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(dotSize).background(LocalAccent.current.accent, CircleShape))
+        Canvas(Modifier.size(width = 14.dp, height = 6.dp)) {
+            if (rise > 0f) {
+                val h = size.height * rise
+                val stroke = 1.6.dp.toPx()
+                drawLine(accent, Offset(0f, size.height), Offset(size.width / 2, size.height - h), stroke, StrokeCap.Round)
+                drawLine(accent, Offset(size.width / 2, size.height - h), Offset(size.width, size.height), stroke, StrokeCap.Round)
+            }
         }
     }
 }

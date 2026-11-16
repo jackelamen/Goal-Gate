@@ -9,13 +9,31 @@ import androidx.room.PrimaryKey
  * Each property is one column.
  */
 
-/** An app the user has chosen. Opening it triggers a question. */
+/** An app the user has chosen. Opening it starts a pause. */
 @Entity(tableName = "selected_apps")
 data class SelectedApp(
     @PrimaryKey val packageName: String,
 )
 
-/** One row for every time the question screen was triggered. */
+/**
+ * One of the user's goals, exactly as they typed it. GoalGate never rewrites
+ * the text, so it never has to guess at grammar.
+ */
+@Entity(tableName = "goals")
+data class Goal(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** The goal itself, at most [GOAL_MAX_CHARS] characters. */
+    val text: String,
+    /** An optional one-line reason ("why this matters"), or null. */
+    val why: String? = null,
+    /** Order on screen: 0 is the top. Only meaningful for goals not yet achieved. */
+    val position: Int,
+    val createdAt: Long,
+    /** When the user marked it achieved (milliseconds since 1970), or null while active. */
+    val achievedAt: Long? = null,
+)
+
+/** One row for every pause GoalGate showed. */
 @Entity(tableName = "trigger_logs")
 data class TriggerLog(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -23,22 +41,29 @@ data class TriggerLog(
     val packageName: String,
     /** When the app came to the foreground (milliseconds since 1970). */
     val openedAt: Long,
-    /** Milliseconds between the app opening and the question appearing on screen. */
+    /** Milliseconds between the app opening and the pause appearing on screen. */
     val delayMs: Long,
     /** Which detection engine caught it: "USAGE" or "ACCESSIBILITY". */
     val engine: String,
-    /** Which question was shown. */
+    /**
+     * The reflection line shown after answering, or "" if none was shown.
+     * (The column keeps its old name from WordGate so no data has to move.)
+     */
     val questionId: String,
-    /** true = right, false = wrong, null = the user left without answering. */
+    /** true = the user answered the pause question, null = they left before answering. */
     val correct: Boolean? = null,
     /** "CONTINUE", "CLOSE", or "NONE" if the user left another way. */
     val action: String = ACTION_NONE,
     /**
-     * Why the question appeared: "OPEN" (the app was opened) or "TIME_CHECK"
+     * Why the pause appeared: "OPEN" (the app was opened) or "TIME_CHECK"
      * (the user stayed in the app for the time set in Settings).
      */
     @ColumnInfo(defaultValue = REASON_OPEN)
     val reason: String = REASON_OPEN,
+    /** The goal the user picked on the pause, or null for "None right now" (or no answer). */
+    val goalId: Long? = null,
+    /** "YES", "MAYBE" or "NO" (see [Answer]), or null if they left before answering. */
+    val answer: String? = null,
 ) {
     companion object {
         const val REASON_OPEN = "OPEN"
@@ -49,14 +74,3 @@ data class TriggerLog(
         const val ACTION_CLOSE = "CLOSE"
     }
 }
-
-/** Remembers how the user did on each question, so wrong ones come back sooner. */
-@Entity(tableName = "question_progress")
-data class QuestionProgress(
-    @PrimaryKey val questionId: String,
-    val timesSeen: Int,
-    val timesWrong: Int,
-    /** true if the most recent answer to this question was wrong. */
-    val lastAnswerWrong: Boolean,
-    val lastSeenAt: Long,
-)
