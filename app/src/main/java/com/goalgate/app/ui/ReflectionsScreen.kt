@@ -237,7 +237,7 @@ private fun GoalWeekRow(count: GoalCount, goals: List<Goal>, most: Int, started:
     Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.Top) {
             Text(
-                name,
+                userText(name),
                 style = if (count.goalId == null) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),

@@ -5,6 +5,9 @@ app, and asks one honest question: will this help, or is it a way to avoid
 something? Then the choice is yours. Nothing is blocked, nothing is scored,
 and nothing leaves the phone.
 
+![The pause: goals, the question, the choice](docs/pause-screen.png)
+![Goals, Reflections, Settings and setup](docs/app-screens.png)
+
 GoalGate is built on WordGate's foundation (detection, permissions,
 onboarding, cooldown, time check, escalation, widget, Korean support).
 

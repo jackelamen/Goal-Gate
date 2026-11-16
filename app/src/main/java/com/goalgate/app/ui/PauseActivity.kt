@@ -441,8 +441,16 @@ internal fun PauseScreen(
                 SectionLabel(header, Modifier.weight(1f), color = softWhite, maxLines = 2)
             }
 
+            // After answering, scroll the response into view on short screens.
+            val scroll = rememberScrollState()
+            LaunchedEffect(answered) {
+                if (answered) {
+                    delay(250)
+                    scroll.animateScrollTo(scroll.maxValue, tween(400))
+                }
+            }
             Column(
-                modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll),
                 verticalArrangement = Arrangement.Center,
             ) {
                 if (goals != null) {
@@ -586,11 +594,11 @@ private fun GoalChoiceCard(goal: Goal, compact: Boolean, onClick: () -> Unit, mo
             .shadow(10.dp, shape, ambientColor = Color.Black.copy(alpha = 0.35f), spotColor = Color.Black.copy(alpha = 0.35f)),
     ) {
         Column(Modifier.heightIn(min = if (compact) 50.dp else 60.dp).padding(horizontal = 20.dp, vertical = if (compact) 10.dp else 14.dp)) {
-            FitBlock(goal.text, MaterialTheme.typography.titleLarge, MaterialTheme.colorScheme.onSurface, maxLines = 2)
+            FitBlock(goal.text, MaterialTheme.typography.titleLarge, MaterialTheme.colorScheme.onSurface, maxLines = 3)
             val why = goal.why
             if (!why.isNullOrBlank() && !compact) {
                 Text(
-                    why,
+                    userText(why),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -650,7 +658,9 @@ private fun QuestionPart(
                 Spacer(Modifier.height(8.dp))
                 FitBlock(
                     goal.text,
-                    MaterialTheme.typography.headlineMedium,
+                    // Short screens (small phones, large text): a smaller size, so the
+                    // answers and the response still fit above the buttons.
+                    if (isShort()) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                     MaterialTheme.colorScheme.onBackground,
                     maxLines = 3,
                     minFontSize = 18.sp,
@@ -839,6 +849,13 @@ private fun SettleRing(play: Boolean, origin: Offset) {
         drawCircle(accent, radius = radius, center = origin, alpha = 0.08f * fade)
         drawCircle(accent, radius = radius, center = origin, alpha = 0.35f * fade, style = Stroke(1.5.dp.toPx()))
     }
+}
+
+/** True on a phone whose usable height is small for this layout (small phones, large text). */
+@Composable
+private fun isShort(): Boolean {
+    val c = LocalConfiguration.current
+    return c.screenHeightDp / c.fontScale < 600
 }
 
 /** True on a short screen, such as a phone turned sideways. */

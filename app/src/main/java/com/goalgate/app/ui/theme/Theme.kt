@@ -59,10 +59,10 @@ import com.goalgate.app.R
  */
 
 // Paper and ink
-val Paper = Color(0xFFF4F1EA)
+val Paper = Color(0xFFECEFEA)     // lichen mist: a cool paper from the same landscape as the pine
 val Ink = Color(0xFF14171A)
-val InkSoft = Color(0xFF61666B)
-val Hairline = Color(0xFFE0DCD2)
+val InkSoft = Color(0xFF5C6661)
+val Hairline = Color(0xFFD8DED8)
 
 // The accent on paper
 val Pine = Color(0xFF1D5B4C)
@@ -82,9 +82,9 @@ private val LightColors = lightColorScheme(
     onBackground = Ink,
     surface = Color.White,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFE9E5DC),
+    surfaceVariant = Color(0xFFDFE4DF),
     onSurfaceVariant = InkSoft,
-    outline = Color(0xFFCBC6BB),
+    outline = Color(0xFFC2C9C3),
     outlineVariant = Hairline,
     error = Ink,
 )
@@ -113,9 +113,9 @@ val PineColors = darkColorScheme(
     onPrimary = Ink,
     background = PineGround,
     onBackground = Color.White,
-    surface = Color(0xFFFBFAF6),
+    surface = Color(0xFFF9FAF8),
     onSurface = Ink,
-    surfaceVariant = Color(0xFFE9E5DC),
+    surfaceVariant = Color(0xFFDFE4DF),
     onSurfaceVariant = InkSoft,
     outline = Color.White.copy(alpha = 0.45f),
     outlineVariant = Color.White.copy(alpha = 0.16f),

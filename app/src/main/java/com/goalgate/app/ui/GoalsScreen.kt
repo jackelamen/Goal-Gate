@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goalgate.app.GoalGateApp
 import com.goalgate.app.R
@@ -247,7 +249,7 @@ private fun GoalCard(
         val why = goal.why
         if (!why.isNullOrBlank()) {
             Text(
-                why,
+                userText(why),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp, end = 12.dp),
@@ -277,19 +279,21 @@ private fun SmallAction(
         onClick = onClick,
         enabled = enabled,
         shape = CircleShape,
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        modifier = Modifier.heightIn(min = 44.dp).then(
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+        modifier = Modifier.defaultMinSize(minWidth = 40.dp, minHeight = 44.dp).then(
             if (description != null) Modifier.semantics { contentDescription = description } else Modifier
         ),
     ) {
-        Text(
+        // One line that shrinks a little on narrow screens, never breaking a word.
+        FitText(
             text,
-            style = MaterialTheme.typography.labelLarge,
+            MaterialTheme.typography.labelLarge,
             color = when {
                 !enabled -> MaterialTheme.colorScheme.outlineVariant
                 accent -> LocalAccent.current.accent
                 else -> MaterialTheme.colorScheme.onSurface
             },
+            minFontSize = 11.sp,
         )
     }
 }
@@ -306,7 +310,7 @@ private fun AchievedRow(goal: Goal, canRestore: Boolean, onRestore: () -> Unit, 
             SummitMark(lineColor = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(goal.text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+                Text(userText(goal.text), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
                 Text(
                     stringResource(R.string.goals_achieved_on, date),
                     style = MaterialTheme.typography.bodyMedium,
@@ -332,7 +336,7 @@ private fun AchievedBanner(goalText: String, modifier: Modifier = Modifier) {
             Column {
                 SectionLabel(stringResource(R.string.goals_achieved_banner), color = LocalAccent.current.accent)
                 Spacer(Modifier.height(2.dp))
-                Text(goalText, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+                Text(userText(goalText), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
             }
         }
     }

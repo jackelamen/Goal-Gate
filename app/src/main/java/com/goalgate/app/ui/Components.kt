@@ -175,6 +175,14 @@ fun koreanStyle(): TextStyle = MaterialTheme.typography.bodyMedium
 fun keepKoreanWordsTogether(text: String): String =
     text.split(' ').joinToString(" ") { word -> word.toList().joinToString("\u2060") }
 
+/**
+ * Text the user typed (a goal, a "why"), ready to show. Their words are never
+ * changed, but if they contain Korean, the letters of each word are glued
+ * together (see [keepKoreanWordsTogether]) so a goal never wraps mid-word.
+ */
+fun userText(text: String): String =
+    if (text.any { it in '\uAC00'..'\uD7A3' }) keepKoreanWordsTogether(text) else text
+
 /** A small label in spaced capitals, e.g. "COOLDOWN". */
 @Composable
 fun SectionLabel(
@@ -356,14 +364,15 @@ fun FitBlock(
     minFontSize: TextUnit = 15.sp,
 ) {
     val measurer = rememberTextMeasurer()
+    val shown = userText(text)
     BoxWithConstraints(modifier) {
         val maxWidthPx = constraints.maxWidth
-        val fitted = remember(text, style, maxWidthPx, maxLines) {
+        val fitted = remember(shown, style, maxWidthPx, maxLines) {
             var size = style.fontSize.value
             val ratio = style.lineHeight.value / style.fontSize.value
             while (size > minFontSize.value) {
                 val result = measurer.measure(
-                    text,
+                    shown,
                     style.copy(fontSize = size.sp, lineHeight = (size * ratio).sp),
                     maxLines = maxLines,
                     constraints = Constraints(maxWidth = maxWidthPx),
@@ -373,6 +382,6 @@ fun FitBlock(
             }
             style.copy(fontSize = size.sp, lineHeight = (size * ratio).sp)
         }
-        Text(text, style = fitted, color = color, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+        Text(shown, style = fitted, color = color, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
     }
 }

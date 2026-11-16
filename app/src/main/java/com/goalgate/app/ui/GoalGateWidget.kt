@@ -48,7 +48,7 @@ class GoalGateWidget : AppWidgetProvider() {
             LocalDate.now(),
         )
         val views = RemoteViews(context.packageName, R.layout.widget_goalgate)
-        views.setTextViewText(R.id.widget_goal, goal?.text ?: context.getString(R.string.widget_no_goal))
+        views.setTextViewText(R.id.widget_goal, goal?.text?.let { userText(it) } ?: context.getString(R.string.widget_no_goal))
 
         // Tap anywhere: open the Goals tab.
         val tap = PendingIntent.getActivity(

@@ -351,7 +351,7 @@ private fun ReadyStep(onFinished: () -> Unit) {
                 Spacer(Modifier.height(6.dp))
                 for (goal in activeGoals(goals)) {
                     Text(
-                        goal.text,
+                        userText(goal.text),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(vertical = 3.dp),
@@ -430,23 +430,20 @@ private fun GoalsStep(number: Int, total: Int, onDone: () -> Unit) {
                 ) {
                     FitBlock(goal.text, MaterialTheme.typography.titleLarge, MaterialTheme.colorScheme.onSurface)
                     goal.why?.let {
-                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(userText(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
-            if (canAddGoal(all)) {
+            if (goals.isNotEmpty() && canAddGoal(all)) {
                 Spacer(Modifier.height(6.dp))
-                QuietButton(
-                    "+ " + stringResource(if (goals.isEmpty()) R.string.ob_goals_add_first else R.string.goals_add),
-                    onClick = { adding = true },
-                )
+                QuietButton("+ " + stringResource(R.string.goals_add), onClick = { adding = true })
             }
         }
         Spacer(Modifier.height(16.dp))
+        // With no goal yet, the main button opens the editor: one is required.
         PrimaryButton(
-            if (goals.isEmpty()) stringResource(R.string.ob_goals_need_one) else stringResource(R.string.ob_apps_done),
-            onClick = onDone,
-            enabled = goals.isNotEmpty(),
+            stringResource(if (goals.isEmpty()) R.string.ob_goals_add_first else R.string.ob_apps_done),
+            onClick = { if (goals.isEmpty()) adding = true else onDone() },
         )
     }
 
