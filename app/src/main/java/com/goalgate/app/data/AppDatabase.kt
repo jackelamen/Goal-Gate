@@ -9,6 +9,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -59,6 +60,33 @@ interface GoalDao {
 }
 
 @Dao
+interface GoalStepDao {
+    /** Every step of every goal, in order. Updates by itself. */
+    @Query("SELECT * FROM goal_steps ORDER BY goalId, position, id")
+    fun observeAll(): Flow<List<GoalStep>>
+
+    /** Every step, for background work (the pause screen, the widget). */
+    @Query("SELECT * FROM goal_steps ORDER BY goalId, position, id")
+    fun getAll(): List<GoalStep>
+
+    @Update
+    suspend fun update(step: GoalStep)
+
+    @Insert
+    suspend fun insertAll(steps: List<GoalStep>)
+
+    @Query("DELETE FROM goal_steps WHERE goalId = :goalId")
+    suspend fun deleteForGoal(goalId: Long)
+
+    /** Saves the edited step list of one goal: the old list is replaced as a whole. */
+    @Transaction
+    suspend fun replaceForGoal(goalId: Long, steps: List<GoalStep>) {
+        deleteForGoal(goalId)
+        insertAll(steps.mapIndexed { index, step -> step.copy(id = 0, goalId = goalId, position = index) })
+    }
+}
+
+@Dao
 interface TriggerLogDao {
     /** Newest first. */
     @Query("SELECT * FROM trigger_logs ORDER BY openedAt DESC")
@@ -100,21 +128,22 @@ interface TriggerLogDao {
 
 /** The database itself: a list of tables and a way to reach each DAO. */
 @Database(
-    entities = [SelectedApp::class, TriggerLog::class, Goal::class],
-    version = 3,
+    entities = [SelectedApp::class, TriggerLog::class, Goal::class, GoalStep::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun selectedAppDao(): SelectedAppDao
     abstract fun triggerLogDao(): TriggerLogDao
     abstract fun goalDao(): GoalDao
+    abstract fun goalStepDao(): GoalStepDao
 
     companion object {
         const val FILE_NAME = "goalgate.db"
 
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, FILE_NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
 
         /**
@@ -147,6 +176,26 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE trigger_logs ADD COLUMN goalId INTEGER")
                 db.execSQL("ALTER TABLE trigger_logs ADD COLUMN answer TEXT")
                 db.execSQL("DROP TABLE IF EXISTS question_progress")
+            }
+        }
+
+        /**
+         * Version 4: when each goal applies (existing goals become "always"),
+         * the optional steps inside goals, and the length of a chosen downtime.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE goals ADD COLUMN schedule TEXT NOT NULL DEFAULT 'ALWAYS'")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS goal_steps (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "goalId INTEGER NOT NULL, " +
+                        "text TEXT NOT NULL, " +
+                        "position INTEGER NOT NULL, " +
+                        "doneAt INTEGER)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_goal_steps_goalId ON goal_steps (goalId)")
+                db.execSQL("ALTER TABLE trigger_logs ADD COLUMN downtimeMinutes INTEGER")
             }
         }
     }

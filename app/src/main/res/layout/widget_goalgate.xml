@@ -51,6 +51,18 @@
         android:textColor="#FFFFFFFF"
         android:textSize="21sp" />
 
+    <!-- The goal's next step, if it has one. Hidden otherwise. -->
+    <TextView
+        android:id="@+id/widget_next_step"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:fontFamily="@font/figtree"
+        android:maxLines="1"
+        android:textColor="#BFFFFFFF"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/widget_check_in"
         android:layout_width="wrap_content"

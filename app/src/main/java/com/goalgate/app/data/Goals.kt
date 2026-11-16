@@ -18,6 +18,12 @@ const val GOAL_MAX_CHARS = 60
 /** Longest "why" line, in characters. */
 const val WHY_MAX_CHARS = 60
 
+/** Longest step, in characters. */
+const val STEP_MAX_CHARS = 60
+
+/** At most this many steps in one goal. Steps are a short path, not a task list. */
+const val MAX_STEPS = 20
+
 /** Goals not yet achieved, in the order the user arranged them. */
 fun activeGoals(goals: List<Goal>): List<Goal> =
     goals.filter { it.achievedAt == null }.sortedWith(compareBy<Goal> { it.position }.thenBy { it.id })
@@ -76,4 +82,27 @@ fun todaysGoal(
         .sortedByDescending { it.openedAt }
         .firstNotNullOfOrNull { byId[it.goalId] }
     return pickedToday ?: active.firstOrNull()
+}
+
+// ---------------------------------------------------------------------------
+// Steps inside goals
+// ---------------------------------------------------------------------------
+
+/**
+ * The goal's next step: the first one, in order, not yet checked off.
+ * Null when the goal has no steps or all of them are done.
+ */
+fun nextStep(steps: List<GoalStep>, goalId: Long): GoalStep? =
+    steps.filter { it.goalId == goalId && it.doneAt == null }
+        .minWithOrNull(compareBy<GoalStep> { it.position }.thenBy { it.id })
+
+/** The next step of every goal that has one, by goal id. */
+fun nextSteps(steps: List<GoalStep>): Map<Long, GoalStep> =
+    steps.groupBy { it.goalId }.mapNotNull { (goalId, list) -> nextStep(list, goalId)?.let { goalId to it } }.toMap()
+
+/** Returns [items] with the one at [from] moved up (-1) or down (+1). Past either end: unchanged. */
+fun <T> moveItem(items: List<T>, from: Int, delta: Int): List<T> {
+    val to = (from + delta).coerceIn(0, items.lastIndex)
+    if (from !in items.indices || to == from) return items
+    return items.toMutableList().apply { add(to, removeAt(from)) }
 }

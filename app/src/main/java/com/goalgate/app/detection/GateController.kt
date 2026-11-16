@@ -47,6 +47,8 @@ object GateController {
     private const val TAG = "GoalGate"
     private const val KEY_COOLDOWNS = "cooldowns"
     private const val KEY_CLOCKS = "clocks"
+    private const val KEY_DOWNTIME_UNTIL = "downtimeUntil"
+    private const val KEY_DOWNTIME_MINUTES = "downtimeMinutes"
 
     /** The packages the user picked. Kept up to date by [watchSelectedApps]. */
     @Volatile
@@ -76,6 +78,19 @@ object GateController {
     private var lastEngine = Engine.USAGE
 
     private val timeUp = Runnable { onTimeUp() }
+
+    // ---- Downtime ----
+
+    /**
+     * "It's my downtime": until this time (ms), no chosen app is paused and no
+     * time check runs. 0 when there is no downtime.
+     */
+    private var downtimeUntil = 0L
+
+    /** The length the user chose, for the message when it ends ("Your 30 minutes are up"). */
+    private var downtimeMinutes = 0
+
+    private val downtimeOver = Runnable { onDowntimeOver() }
 
     /**
      * After a restart: the app whose clock was running when GoalGate stopped.
@@ -107,6 +122,10 @@ object GateController {
         }
         timer.restore(prefs.getString(KEY_CLOCKS, null))
         restoredRunning = timer.runningPackage()
+        downtimeUntil = prefs.getLong(KEY_DOWNTIME_UNTIL, 0L)
+        downtimeMinutes = prefs.getInt(KEY_DOWNTIME_MINUTES, 0)
+        // Still in downtime after a restart: schedule its end again.
+        if (downtimeUntil > now) handler.postDelayed(downtimeOver, downtimeUntil - now) else downtimeUntil = 0L
     }
 
     /** Writes the cooldowns and clocks to the phone. Called after every change. */
@@ -120,6 +139,8 @@ object GateController {
         statePrefs(context).edit()
             .putString(KEY_COOLDOWNS, cooldowns.toString())
             .putString(KEY_CLOCKS, timer.toJson())
+            .putLong(KEY_DOWNTIME_UNTIL, downtimeUntil)
+            .putInt(KEY_DOWNTIME_MINUTES, downtimeMinutes)
             .apply()
     }
 
@@ -185,6 +206,9 @@ object GateController {
         // Rule 2: not one of the chosen apps.
         if (packageName !in selectedPackages) return
 
+        // Downtime the user chose: every chosen app is left alone until it ends.
+        if (now < downtimeUntil) return
+
         // Rule 3: still cooling down after a recent "Continue".
         // No pause, but the time check keeps counting.
         val until = cooldownUntil[packageName] ?: 0L
@@ -213,10 +237,55 @@ object GateController {
         saveState()
     }
 
+    /**
+     * Called when the user chooses "It's my downtime" and goes on: for
+     * [minutes], no chosen app is paused and no time check runs. When the time
+     * is up and the user is still in a chosen app, one gentle check appears.
+     */
+    @Synchronized
+    fun startDowntime(packageName: String, minutes: Int) {
+        val now = System.currentTimeMillis()
+        downtimeUntil = now + minutes * 60_000L
+        downtimeMinutes = minutes
+        restoredRunning = null
+        pauseClock(now)
+        timer.reset(packageName)
+        handler.removeCallbacks(downtimeOver)
+        handler.postDelayed(downtimeOver, minutes * 60_000L)
+        saveState()
+    }
+
+    /** True while a downtime the user chose is running. */
+    fun inDowntime(): Boolean = System.currentTimeMillis() < downtimeUntil
+
+    /** The downtime ended. If the user is still in a chosen app, show the gentle check. */
+    @Synchronized
+    private fun onDowntimeOver() {
+        val context = appContext ?: return
+        val minutes = downtimeMinutes
+        downtimeUntil = 0L
+        saveState()
+        val packageName = lastForeground ?: return
+        val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (!power.isInteractive || packageName == context.packageName || packageName !in selectedPackages) return
+        Log.d(TAG, "Downtime of $minutes min over in $packageName")
+        openPause(
+            context,
+            PauseActivity.createIntent(
+                context, packageName, System.currentTimeMillis(), lastEngine,
+                reason = TriggerLog.REASON_DOWNTIME_END,
+                minutesUsed = minutes,
+            ),
+        )
+    }
+
     /** Forgets cooldowns, clocks and the last app seen (used by "Reset GoalGate"). */
     @Synchronized
     fun forgetEverything() {
         handler.removeCallbacks(timeUp)
+        handler.removeCallbacks(downtimeOver)
+        downtimeUntil = 0L
+        downtimeMinutes = 0
         cooldownUntil.clear()
         timer.clear()
         runningPackage = null
@@ -282,7 +351,7 @@ object GateController {
         val now = System.currentTimeMillis()
         if (!screenOn) {
             pauseClock(now)
-        } else {
+        } else if (now >= downtimeUntil) {
             val current = lastForeground ?: return
             if (runningPackage == null && timer.has(current)) resumeClock(current, now)
         }

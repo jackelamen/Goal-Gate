@@ -5,7 +5,9 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import com.goalgate.app.data.AppDatabase
 import com.goalgate.app.data.Goal
+import com.goalgate.app.data.GoalStep
 import com.goalgate.app.data.TriggerLog
+import com.goalgate.app.data.nextStep
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -103,7 +105,68 @@ class MigrationTest {
             }
         }.get()
         assertTrue("goals" in tables)
+        assertTrue("goal_steps" in tables)
         assertFalse("question_progress" in tables)
+        assertEquals(Goal.SCHEDULE_ALWAYS, goals.single().schedule)
+        database.close()
+    }
+
+    @Test
+    fun version3To4_keepsGoalsAndAnswers_andAddsStepsAndDowntime() {
+        // 1. A version 3 database (GoalGate before steps and downtime), with a goal and an answered pause.
+        context.deleteDatabase(AppDatabase.FILE_NAME)
+        val file = context.getDatabasePath(AppDatabase.FILE_NAME).apply { parentFile?.mkdirs() }
+        SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
+            db.execSQL("CREATE TABLE IF NOT EXISTS selected_apps (packageName TEXT NOT NULL, PRIMARY KEY(packageName))")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS trigger_logs (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "packageName TEXT NOT NULL, openedAt INTEGER NOT NULL, delayMs INTEGER NOT NULL, " +
+                    "engine TEXT NOT NULL, questionId TEXT NOT NULL, correct INTEGER, action TEXT NOT NULL, " +
+                    "reason TEXT NOT NULL DEFAULT 'OPEN', goalId INTEGER, answer TEXT)"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS goals (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, text TEXT NOT NULL, " +
+                    "why TEXT, position INTEGER NOT NULL, createdAt INTEGER NOT NULL, achievedAt INTEGER)"
+            )
+            db.execSQL("INSERT INTO goals (text, why, position, createdAt, achievedAt) VALUES ('Run a 5K', 'For my health', 0, 10, NULL)")
+            db.execSQL(
+                "INSERT INTO trigger_logs (packageName, openedAt, delayMs, engine, questionId, correct, action, reason, goalId, answer) " +
+                    "VALUES ('com.instagram.android', 3000, 180, 'USAGE', 'n01', 1, 'CLOSE', 'OPEN', 1, 'NO')"
+            )
+            db.version = 3
+        }
+
+        // 2. Open it with this version of the app.
+        val database = AppDatabase.create(context)
+        val goals = background.submit<List<Goal>> { database.goalDao().getAll() }.get()
+        val logs = background.submit<List<TriggerLog>> { database.triggerLogDao().getAll() }.get()
+
+        // 3. The goal and the answer are unchanged; existing goals apply "always".
+        val goal = goals.single()
+        assertEquals("Run a 5K", goal.text)
+        assertEquals("For my health", goal.why)
+        assertEquals(Goal.SCHEDULE_ALWAYS, goal.schedule)
+        val log = logs.single()
+        assertEquals("NO", log.answer)
+        assertEquals(1L, log.goalId)
+        assertEquals("CLOSE", log.action)
+        assertNull(log.downtimeMinutes)
+
+        // 4. Steps work, in order, and the next step moves on when one is checked off.
+        runBlocking {
+            database.goalStepDao().replaceForGoal(
+                goal.id,
+                listOf("Buy running shoes", "Run 1 km without stopping", "Run 3 km").map {
+                    GoalStep(goalId = goal.id, text = it, position = 0)
+                },
+            )
+        }
+        val steps = background.submit<List<GoalStep>> { database.goalStepDao().getAll() }.get()
+        assertEquals(listOf(0, 1, 2), steps.map { it.position })
+        assertEquals("Buy running shoes", nextStep(steps, goal.id)?.text)
+        runBlocking { database.goalStepDao().update(steps.first().copy(doneAt = 99)) }
+        val after = background.submit<List<GoalStep>> { database.goalStepDao().getAll() }.get()
+        assertEquals("Run 1 km without stopping", nextStep(after, goal.id)?.text)
         database.close()
     }
 }

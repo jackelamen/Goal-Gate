@@ -32,6 +32,7 @@ private val SECTIONS = listOf(
     R.string.manual_apps_t to R.string.manual_apps,
     R.string.manual_pause_t to R.string.manual_pause,
     R.string.manual_answers_t to R.string.manual_answers,
+    R.string.manual_downtime_t to R.string.manual_downtime,
     R.string.manual_close_t to R.string.manual_close,
     R.string.manual_cooldown_t to R.string.manual_cooldown,
     R.string.manual_timecheck_t to R.string.manual_timecheck,

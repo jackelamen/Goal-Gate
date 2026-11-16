@@ -39,7 +39,7 @@ import androidx.compose.ui.res.pluralStringResource
 import com.goalgate.app.data.Goal
 import com.goalgate.app.data.activeGoals
 import com.goalgate.app.data.canAddGoal
-import kotlinx.coroutines.launch
+import com.goalgate.app.data.nextSteps
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -320,6 +320,8 @@ private fun ReadyStep(onFinished: () -> Unit) {
     val database = (context.applicationContext as GoalGateApp).database
     val selected by database.selectedAppDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
     val goals by database.goalDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val steps by database.goalStepDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val next = nextSteps(steps)
     val firstApp = selected.firstOrNull()?.packageName?.let { appLabel(context, it) } ?: ""
 
     HeroGround(Modifier.fillMaxSize()) {
@@ -354,8 +356,16 @@ private fun ReadyStep(onFinished: () -> Unit) {
                         userText(goal.text),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(vertical = 3.dp),
+                        modifier = Modifier.padding(top = 3.dp),
                     )
+                    next[goal.id]?.let {
+                        Text(
+                            stringResource(R.string.pause_next_step, userText(it.text)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = softWhite,
+                        )
+                    }
+                    Spacer(Modifier.height(3.dp))
                 }
                 Spacer(Modifier.height(20.dp))
                 if (firstApp.isNotEmpty()) {
@@ -374,15 +384,18 @@ private fun ReadyStep(onFinished: () -> Unit) {
 }
 
 /**
- * Write your goals: at least one, up to five, each with an optional "why".
+ * Write your goals: at least one, up to five, each with an optional "why"
+ * and optional steps.
  * The examples are only hints. Goals can be edited later in the Goals tab.
  */
 @Composable
 private fun GoalsStep(number: Int, total: Int, onDone: () -> Unit) {
     val context = LocalContext.current
-    val dao = (context.applicationContext as GoalGateApp).database.goalDao()
-    val all by dao.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val database = (context.applicationContext as GoalGateApp).database
+    val all by database.goalDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val steps by database.goalStepDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
     val goals = activeGoals(all)
+    val next = nextSteps(steps)
     val scope = rememberCoroutineScope()
     var adding by rememberSaveable { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Goal?>(null) }
@@ -432,6 +445,14 @@ private fun GoalsStep(number: Int, total: Int, onDone: () -> Unit) {
                     goal.why?.let {
                         Text(userText(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    next[goal.id]?.let {
+                        Text(
+                            stringResource(R.string.pause_next_step, userText(it.text)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                 }
             }
             if (goals.isNotEmpty() && canAddGoal(all)) {
@@ -448,18 +469,20 @@ private fun GoalsStep(number: Int, total: Int, onDone: () -> Unit) {
     }
 
     if (adding) {
-        GoalEditDialog(
+        GoalEditor(
             initial = null,
-            onSave = { text, why -> scope.addGoal(dao, all, text, why); adding = false },
+            initialSteps = emptyList(),
+            onSave = { draft -> scope.saveGoal(database, null, all, draft); adding = false },
             onDelete = null,
             onDismiss = { adding = false },
         )
     }
     editing?.let { goal ->
-        GoalEditDialog(
+        GoalEditor(
             initial = goal,
-            onSave = { text, why -> scope.launch { dao.update(listOf(goal.copy(text = text, why = why))) }; editing = null },
-            onDelete = { scope.launch { dao.delete(goal) }; editing = null },
+            initialSteps = steps.filter { it.goalId == goal.id }.sortedBy { it.position },
+            onSave = { draft -> scope.saveGoal(database, goal, all, draft); editing = null },
+            onDelete = { scope.deleteGoal(database, goal, goals); editing = null },
             onDismiss = { editing = null },
         )
     }

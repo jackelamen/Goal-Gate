@@ -6,9 +6,13 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import android.widget.RemoteViews
 import com.goalgate.app.GoalGateApp
 import com.goalgate.app.R
+import com.goalgate.app.data.ScheduleNow
+import com.goalgate.app.data.goalsForNow
+import com.goalgate.app.data.nextStep
 import com.goalgate.app.data.todaysGoal
 import java.time.LocalDate
 
@@ -42,13 +46,22 @@ class GoalGateWidget : AppWidgetProvider() {
     }
 
     private fun buildViews(context: Context, app: GoalGateApp): RemoteViews {
+        // Only goals that apply now: a "Workday" goal is not today's goal on a Sunday.
+        val schedule = ScheduleNow.of(context, app.settings)
         val goal = todaysGoal(
-            app.database.goalDao().getAll(),
+            goalsForNow(app.database.goalDao().getAll(), schedule.workTime),
             app.database.triggerLogDao().getAll(),
             LocalDate.now(),
         )
+        val step = goal?.let { nextStep(app.database.goalStepDao().getAll(), it.id) }
         val views = RemoteViews(context.packageName, R.layout.widget_goalgate)
         views.setTextViewText(R.id.widget_goal, goal?.text?.let { userText(it) } ?: context.getString(R.string.widget_no_goal))
+        if (step != null) {
+            views.setTextViewText(R.id.widget_next_step, context.getString(R.string.pause_next_step, userText(step.text)))
+            views.setViewVisibility(R.id.widget_next_step, View.VISIBLE)
+        } else {
+            views.setViewVisibility(R.id.widget_next_step, View.GONE)
+        }
 
         // Tap anywhere: open the Goals tab.
         val tap = PendingIntent.getActivity(

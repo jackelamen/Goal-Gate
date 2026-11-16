@@ -40,6 +40,29 @@ Every pause writes one row to the log: app, time, delay, engine, reason
 (open or time check), the goal picked, the answer, the line shown, and the
 action (Close, Continue, or none).
 
+## Downtime, workday goals and steps
+
+- **"It's my downtime"** is on the first step of every pause. Choose 15, 30
+  or 60 minutes; Continue opens the app with no wait, and GoalGate leaves
+  every chosen app alone for that time. If you are still in a chosen app
+  when it ends, one check asks "Keep going, or stop here?". Reflections
+  counts downtime on its own line, not as an answer.
+- **Scheduled downtime** (Settings > Downtime): daily hours (up to 3, can run
+  past midnight), weekends, and public holidays. At those times "It's my
+  downtime" comes first on the pause.
+- **Public holidays** are bundled for South Korea, the US, the UK, Canada,
+  Australia and Japan, 2026 to 2030 (`tools/make_holidays.py` regenerates
+  them with the open-source `holidays` package; only the dates ship, and
+  nothing is downloaded).
+- **Workday goals**: each goal is Always or Workday. Workday goals only show
+  during the workday set in Settings (days and hours, night shifts allowed),
+  never on public holidays.
+- **Steps inside goals** (optional, in order, up to 20): the first one not
+  checked off is the goal's next step, shown with the goal on the pause,
+  the Goals tab, setup, Reflections and the widget. Steps are checked off
+  only in the Goals tab (with Undo). No dates, reminders, priorities or
+  progress bars: it stays a goal list, not a task manager.
+
 ## How detection works
 
 ```
@@ -101,9 +124,11 @@ already written for an open and counts distinct open times
 
 ## Database
 
-Room, version 3. `MIGRATION_2_3` adds the `goals` table and the `goalId` and
+Room, version 4. `MIGRATION_2_3` adds the `goals` table and the `goalId` and
 `answer` columns on `trigger_logs`, and drops WordGate's `question_progress`.
-`MigrationTest` builds a real version 2 database, opens it with the app and
+`MIGRATION_3_4` adds each goal's `schedule` (existing goals become "always"),
+the `goal_steps` table and `downtimeMinutes` on the log. `MigrationTest`
+builds real version 2 and version 3 databases, opens them with the app and
 checks every old row survived. Any future schema change needs a new
 migration and a test like it.
 

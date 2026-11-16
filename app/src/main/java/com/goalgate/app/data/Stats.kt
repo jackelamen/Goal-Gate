@@ -49,6 +49,9 @@ data class Week(
     val goals: List<GoalCount>,
     val apps: List<AppWeek>,
     val sentence: WeekSentence?,
+    /** Times the user chose "It's my downtime" and went on, and the minutes they chose in total. */
+    val downtimes: Int = 0,
+    val downtimeMinutes: Int = 0,
 ) {
     val answered get() = yes + maybe + no
 }
@@ -75,8 +78,14 @@ fun computeWeek(logs: List<TriggerLog>, now: Long, zone: ZoneId = ZoneId.systemD
             .sortedWith(compareByDescending<GoalCount> { it.times }.thenBy { it.goalId == null }.thenBy { it.goalId }),
         apps = weekByApp(week, now),
         sentence = weekSentence(answered, zone),
+        downtimes = startedDowntimes(week).size,
+        downtimeMinutes = startedDowntimes(week).sumOf { it.downtimeMinutes ?: 0 },
     )
 }
+
+/** Pauses where the user chose "It's my downtime" and then continued (not closed). */
+fun startedDowntimes(logs: List<TriggerLog>): List<TriggerLog> =
+    logs.filter { it.answer == TriggerLog.ANSWER_DOWNTIME && it.action == TriggerLog.ACTION_CONTINUE }
 
 /**
  * Picks the answer given most often this week. On a tie, "No" comes first,

@@ -59,6 +59,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
@@ -74,7 +75,10 @@ import com.goalgate.app.data.ReflectionBank
 import com.goalgate.app.data.ReflectionLine
 import com.goalgate.app.data.Tone
 import com.goalgate.app.data.TriggerLog
-import com.goalgate.app.data.activeGoals
+import com.goalgate.app.data.DOWNTIME_LENGTHS
+import com.goalgate.app.data.ScheduleNow
+import com.goalgate.app.data.goalsForNow
+import com.goalgate.app.data.nextSteps
 import com.goalgate.app.data.continueDelaySeconds
 import com.goalgate.app.data.opensThisHour
 import com.goalgate.app.data.pickLine
@@ -83,8 +87,8 @@ import com.goalgate.app.ui.theme.GoalGateTheme
 import com.goalgate.app.ui.theme.LocalAccent
 import kotlinx.coroutines.delay
 
-/** The three parts of the pause, in order. */
-enum class PauseStep { GOALS, QUESTION, CHOICE }
+/** The parts of the pause, in order. DOWNTIME replaces QUESTION and CHOICE when chosen. */
+enum class PauseStep { GOALS, QUESTION, CHOICE, DOWNTIME }
 
 /**
  * THE PAUSE: the full-screen check-in shown before a chosen app.
@@ -93,6 +97,16 @@ enum class PauseStep { GOALS, QUESTION, CHOICE }
  *   2. QUESTION  that goal on its own card, the app's name as a label, and one
  *                fixed question: "Does opening [app] help this goal?" (Yes / Maybe / No).
  *   3. CHOICE    a short line that fits the answer, then Close or Continue.
+ *
+ * Or, on step 1, "It's my downtime":
+ *   DOWNTIME     how long (15, 30 or 60 min), then Close or Continue with no
+ *                wait. GoalGate then leaves every chosen app alone for that
+ *                time, and shows one gentle check when it is up (reason
+ *                DOWNTIME_END: "Your 30 minutes of downtime are up").
+ *
+ * In scheduled downtime (Settings), "It's my downtime" is offered first.
+ * Goals marked "Workday" only appear during the workday. Each goal shows its
+ * next step, read-only: steps are checked off in the Goals tab, never here.
  *
  * Nothing is ever blocked. "No" only changes the wording of step 3.
  *
@@ -122,6 +136,9 @@ class PauseActivity : ComponentActivity() {
     private var chosenGoal by mutableStateOf<Goal?>(null)
     private var answer by mutableStateOf<Answer?>(null)
     private var line by mutableStateOf<ReflectionLine?>(null)
+    private var downtimeMinutes by mutableStateOf<Int?>(null)
+    private var nextSteps by mutableStateOf<Map<Long, String>>(emptyMap())
+    private var scheduledDowntime by mutableStateOf(false)
     private var tone = Tone.GENTLE
     private var koreanToo = false
 
@@ -148,6 +165,7 @@ class PauseActivity : ComponentActivity() {
                 PauseScreen(
                     // Why this screen appeared, shown small at the top.
                     header = when {
+                        reason == TriggerLog.REASON_DOWNTIME_END -> stringResource(R.string.downtime_end_header, label)
                         minutesUsed > 0 -> stringResource(R.string.question_header_time, minutesUsed, label)
                         opensThisHour >= 3 -> stringResource(R.string.question_header_repeat, label, opensThisHour)
                         else -> stringResource(R.string.question_header, label)
@@ -166,6 +184,12 @@ class PauseActivity : ComponentActivity() {
                     onAnswer = ::onAnswer,
                     onClose = ::onClose,
                     onContinue = ::onContinue,
+                    nextSteps = nextSteps,
+                    scheduledDowntime = scheduledDowntime,
+                    downtimeMinutes = downtimeMinutes,
+                    downtimeEndMinutes = if (reason == TriggerLog.REASON_DOWNTIME_END) minutesUsed else null,
+                    onDowntime = ::onDowntimeChosen,
+                    onDowntimeLength = ::onDowntimeLength,
                 )
             }
         }
@@ -181,6 +205,7 @@ class PauseActivity : ComponentActivity() {
         chosenGoal = null
         answer = null
         line = null
+        downtimeMinutes = null
         shownLogged = false
         app.dbThread.execute { log = null }
         load()
@@ -193,6 +218,7 @@ class PauseActivity : ComponentActivity() {
         chosenGoal?.let { outState.putLong(STATE_GOAL, it.id) }
         answer?.let { outState.putString(STATE_ANSWER, it.name) }
         line?.let { outState.putString(STATE_LINE, it.id) }
+        downtimeMinutes?.let { outState.putInt(STATE_DOWNTIME, it) }
     }
 
     private fun restore(state: Bundle) {
@@ -200,6 +226,7 @@ class PauseActivity : ComponentActivity() {
         restoredGoalId = if (state.containsKey(STATE_GOAL)) state.getLong(STATE_GOAL) else null
         answer = Answer.entries.firstOrNull { it.name == state.getString(STATE_ANSWER) }
         restoredLineId = state.getString(STATE_LINE)
+        downtimeMinutes = if (state.containsKey(STATE_DOWNTIME)) state.getInt(STATE_DOWNTIME) else null
     }
 
     private fun readIntent(intent: Intent) {
@@ -208,12 +235,17 @@ class PauseActivity : ComponentActivity() {
         engine = Engine.valueOf(intent.getStringExtra(EXTRA_ENGINE) ?: Engine.USAGE.name)
         reason = intent.getStringExtra(EXTRA_REASON) ?: TriggerLog.REASON_OPEN
         minutesUsed = intent.getIntExtra(EXTRA_MINUTES, 0)
+        // The check at the end of a downtime has nothing to answer: Close and Continue show at once.
+        if (reason == TriggerLog.REASON_DOWNTIME_END) step = PauseStep.CHOICE
     }
 
-    /** Reads the goals and the escalation count on the background thread. */
+    /** Reads the goals, their next steps, today's schedule and the escalation count on the background thread. */
     private fun load() {
         app.dbThread.execute {
-            val active = activeGoals(app.database.goalDao().getAll())
+            val schedule = ScheduleNow.of(this, app.settings)
+            // Only the goals that apply now: "Workday" goals stay out of the evening.
+            val active = goalsForNow(app.database.goalDao().getAll(), schedule.workTime)
+            val steps = nextSteps(app.database.goalStepDao().getAll()).mapValues { it.value.text }
             ReflectionBank.load(this) // warm the cache, so answering is instant
 
             // Escalation, only for "app opened" triggers (see opensThisHour).
@@ -229,14 +261,15 @@ class PauseActivity : ComponentActivity() {
             val restoredLine = restoredLineId?.let { id -> ReflectionBank.load(this).firstOrNull { it.id == id } }
             runOnUiThread {
                 goals = active
+                nextSteps = steps
+                scheduledDowntime = schedule.downtime
                 opensThisHour = opens
                 continueDelay = continueDelaySeconds(opens)
                 chosenGoal = restoredGoal
                 line = restoredLine
                 restoredGoalId = null
                 restoredLineId = null
-                // No goals to choose from (all achieved, or none written): go straight to the question.
-                if (active.isEmpty() && step == PauseStep.GOALS) step = PauseStep.QUESTION
+                // Step 1 always shows, even with no goals for now: "It's my downtime" lives there.
             }
         }
     }
@@ -274,6 +307,25 @@ class PauseActivity : ComponentActivity() {
         step = PauseStep.QUESTION
     }
 
+    /** Step 1: "It's my downtime". Next, the user chooses how long. */
+    private fun onDowntimeChosen() {
+        if (step != PauseStep.GOALS) return
+        chosenGoal = null
+        step = PauseStep.DOWNTIME
+    }
+
+    /** The downtime length was chosen (it can be changed until Close or Continue). */
+    private fun onDowntimeLength(minutes: Int) {
+        if (step != PauseStep.DOWNTIME) return
+        downtimeMinutes = minutes
+        app.dbThread.execute {
+            log?.let {
+                log = it.copy(correct = true, answer = TriggerLog.ANSWER_DOWNTIME, downtimeMinutes = minutes, goalId = null)
+                app.database.triggerLogDao().update(log!!)
+            }
+        }
+    }
+
     /** Step 2: the question was answered. Pick a line for that answer and save it all. */
     private fun onAnswer(choice: Answer) {
         if (step != PauseStep.QUESTION) return
@@ -293,9 +345,14 @@ class PauseActivity : ComponentActivity() {
         }
     }
 
-    /** "Continue to [app]": start the cooldown and step out of the way. */
+    /** "Continue to [app]": start the cooldown (or the downtime) and step out of the way. */
     private fun onContinue() {
-        GateController.startCooldown(targetPackage, app.settings.cooldownMinutes)
+        val downtime = downtimeMinutes
+        if (step == PauseStep.DOWNTIME && downtime != null) {
+            GateController.startDowntime(targetPackage, downtime)
+        } else {
+            GateController.startCooldown(targetPackage, app.settings.cooldownMinutes)
+        }
         saveAction(TriggerLog.ACTION_CONTINUE)
         finish() // the chosen app is right underneath this screen
     }
@@ -349,6 +406,7 @@ class PauseActivity : ComponentActivity() {
         private const val STATE_GOAL = "goal"
         private const val STATE_ANSWER = "answer"
         private const val STATE_LINE = "line"
+        private const val STATE_DOWNTIME = "downtime"
 
         /** Builds the Intent the detection engines use to open this screen. */
         fun createIntent(
@@ -394,9 +452,21 @@ internal fun PauseScreen(
     onAnswer: (Answer) -> Unit,
     onClose: () -> Unit,
     onContinue: () -> Unit,
+    nextSteps: Map<Long, String> = emptyMap(),
+    scheduledDowntime: Boolean = false,
+    downtimeMinutes: Int? = null,
+    downtimeEndMinutes: Int? = null,
+    onDowntime: () -> Unit = {},
+    onDowntimeLength: (Int) -> Unit = {},
 ) {
     val view = LocalView.current
-    val answered = answer != null
+    val downtimeEnd = downtimeEndMinutes != null
+    // "Settled": an answer was given, or a downtime length was chosen.
+    val settled = answer != null || (step == PauseStep.DOWNTIME && downtimeMinutes != null)
+    // Close and Continue are ready once settled; the downtime check has them at once.
+    val answered = settled || downtimeEnd
+    // Downtime is rest the user chose: no escalation wait before Continue.
+    val waitSeconds = if (step == PauseStep.DOWNTIME || downtimeEnd) 0 else continueDelaySeconds
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }
 
     // The phone's Back button behaves like "Close".
@@ -412,8 +482,8 @@ internal fun PauseScreen(
 
     // One soft tick when the answer lands. The same for every answer:
     // GoalGate does not judge, so No does not buzz differently.
-    LaunchedEffect(answered) {
-        if (answered) {
+    LaunchedEffect(settled) {
+        if (settled) {
             view.performHapticFeedback(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM
                 else HapticFeedbackConstants.VIRTUAL_KEY
@@ -425,7 +495,7 @@ internal fun PauseScreen(
         val softWhite = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f)
 
         // A slow ring of light from the chosen answer: the moment it is settled.
-        SettleRing(play = answered, origin = burstOrigin)
+        SettleRing(play = settled, origin = burstOrigin)
 
         Column(
             Modifier
@@ -437,15 +507,15 @@ internal fun PauseScreen(
             // Top line: the summit mark and why this screen appeared. The line
             // has the whole width to itself and may wrap, so long app names fit.
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = if (isLandscapeWide()) 44.dp else 64.dp)) {
-                SummitMark(breathing = !answered, celebrate = answered, lineColor = softWhite)
+                SummitMark(breathing = !answered, celebrate = settled, lineColor = softWhite)
                 Spacer(Modifier.width(10.dp))
                 SectionLabel(header, Modifier.weight(1f), color = softWhite, maxLines = 2)
             }
 
             // After answering, scroll the response into view on short screens.
             val scroll = rememberScrollState()
-            LaunchedEffect(answered) {
-                if (answered) {
+            LaunchedEffect(settled) {
+                if (settled) {
                     delay(250)
                     scroll.animateScrollTo(scroll.maxValue, tween(400))
                 }
@@ -454,23 +524,42 @@ internal fun PauseScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll),
                 verticalArrangement = Arrangement.Center,
             ) {
-                if (goals != null) {
+                if (downtimeEndMinutes != null) {
+                    DowntimeEndPart(downtimeEndMinutes)
+                } else if (goals != null) {
+                    // 0 = goals, 1 = question and choice, 2 = downtime.
+                    val part = when (step) {
+                        PauseStep.GOALS -> 0
+                        PauseStep.QUESTION, PauseStep.CHOICE -> 1
+                        PauseStep.DOWNTIME -> 2
+                    }
                     AnimatedContent(
-                        targetState = step == PauseStep.GOALS,
+                        targetState = part,
                         transitionSpec = { fadeIn(tween(280, delayMillis = 60)) togetherWith fadeOut(tween(140)) },
                         label = "pauseStep",
-                    ) { pickingGoal ->
-                        if (pickingGoal) {
-                            GoalsPart(goals = goals, onGoal = onGoal)
-                        } else {
-                            QuestionPart(
+                    ) { shown ->
+                        when (shown) {
+                            0 -> GoalsPart(
+                                goals = goals,
+                                nextSteps = nextSteps,
+                                scheduledDowntime = scheduledDowntime,
+                                onGoal = onGoal,
+                                onDowntime = onDowntime,
+                            )
+                            1 -> QuestionPart(
                                 appLabel = appLabel,
                                 goal = chosenGoal,
+                                nextStep = chosenGoal?.let { nextSteps[it.id] },
                                 answer = answer,
                                 line = line,
                                 tone = tone,
                                 koreanToo = koreanToo,
                                 onAnswer = onAnswer,
+                                onChosenPosition = { burstOrigin = it },
+                            )
+                            else -> DowntimePart(
+                                minutes = downtimeMinutes,
+                                onLength = onDowntimeLength,
                                 onChosenPosition = { burstOrigin = it },
                             )
                         }
@@ -493,7 +582,13 @@ internal fun PauseScreen(
             )
             Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(top = 12.dp, bottom = 12.dp)) {
                 Text(
-                    stringResource(if (step == PauseStep.GOALS) R.string.pause_hint_goals else R.string.pause_hint_question),
+                    stringResource(
+                        when (step) {
+                            PauseStep.GOALS -> R.string.pause_hint_goals
+                            PauseStep.DOWNTIME -> R.string.pause_hint_downtime
+                            else -> R.string.pause_hint_question
+                        }
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = softWhite,
                     textAlign = TextAlign.Center,
@@ -509,20 +604,20 @@ internal fun PauseScreen(
                 ) {
                     // The countdown starts when the user answers. Until it reaches
                     // zero, Continue shows the seconds left and does nothing.
-                    var waitLeft by remember { mutableIntStateOf(continueDelaySeconds) }
-                    LaunchedEffect(answered, continueDelaySeconds) {
+                    var waitLeft by remember { mutableIntStateOf(waitSeconds) }
+                    LaunchedEffect(answered, waitSeconds) {
                         if (answered) {
-                            waitLeft = continueDelaySeconds
+                            waitLeft = waitSeconds
                             while (waitLeft > 0) {
                                 delay(1000)
                                 waitLeft--
                             }
                         }
                     }
-                    val continueLabel = if (waitLeft > 0) {
-                        stringResource(R.string.question_continue_wait, appLabel, waitLeft)
-                    } else {
-                        stringResource(R.string.question_continue, appLabel)
+                    val continueLabel = when {
+                        waitLeft > 0 -> stringResource(R.string.question_continue_wait, appLabel, waitLeft)
+                        downtimeEnd -> stringResource(R.string.downtime_end_keep_going, appLabel)
+                        else -> stringResource(R.string.question_continue, appLabel)
                     }
                     // "Close" is the solid orange button on purpose: it is the choice
                     // the user installed GoalGate to make more often.
@@ -543,7 +638,13 @@ internal fun PauseScreen(
 
 /** Step 1: "What are you working on right now?" and the goals as cards. */
 @Composable
-private fun GoalsPart(goals: List<Goal>, onGoal: (Goal?) -> Unit) {
+private fun GoalsPart(
+    goals: List<Goal>,
+    nextSteps: Map<Long, String>,
+    scheduledDowntime: Boolean,
+    onGoal: (Goal?) -> Unit,
+    onDowntime: () -> Unit,
+) {
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered = true }
     val compact = isCompact()
@@ -558,11 +659,28 @@ private fun GoalsPart(goals: List<Goal>, onGoal: (Goal?) -> Unit) {
     }
     val list: @Composable () -> Unit = {
         Column(verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp)) {
-            goals.forEachIndexed { index, goal ->
-                GoalChoiceCard(goal, compact, onClick = { onGoal(goal) }, modifier = Modifier.enterAnimation(entered, 1 + index))
+            // In scheduled downtime (Settings), rest is offered first, with a small label saying why.
+            if (scheduledDowntime) {
+                SectionLabel(
+                    stringResource(R.string.pause_downtime_hours),
+                    color = LocalAccent.current.accent,
+                    modifier = Modifier.enterAnimation(entered, 1),
+                )
+                QuietRow(stringResource(R.string.pause_downtime), onClick = onDowntime, modifier = Modifier.enterAnimation(entered, 1))
+                Spacer(Modifier.height(if (compact) 4.dp else 8.dp))
             }
-            // "None right now": a quiet outlined row, not a card, so the goals lead.
-            NoGoalRow(onClick = { onGoal(null) }, modifier = Modifier.enterAnimation(entered, 1 + goals.size))
+            goals.forEachIndexed { index, goal ->
+                GoalChoiceCard(
+                    goal, nextSteps[goal.id], compact,
+                    onClick = { onGoal(goal) },
+                    modifier = Modifier.enterAnimation(entered, 2 + index),
+                )
+            }
+            // "None right now" and "It's my downtime": quiet outlined rows, not cards, so the goals lead.
+            QuietRow(stringResource(R.string.pause_no_goal), onClick = { onGoal(null) }, modifier = Modifier.enterAnimation(entered, 2 + goals.size))
+            if (!scheduledDowntime) {
+                QuietRow(stringResource(R.string.pause_downtime), onClick = onDowntime, modifier = Modifier.enterAnimation(entered, 3 + goals.size))
+            }
         }
     }
     if (isLandscapeWide()) {
@@ -579,9 +697,12 @@ private fun GoalsPart(goals: List<Goal>, onGoal: (Goal?) -> Unit) {
     }
 }
 
-/** One goal to tap on step 1: the user's words, large, with their "why" underneath. */
+/**
+ * One goal to tap on step 1: the user's words, large. Underneath: the goal's
+ * next step if it has one (read-only), otherwise its "why".
+ */
 @Composable
-private fun GoalChoiceCard(goal: Goal, compact: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun GoalChoiceCard(goal: Goal, nextStep: String?, compact: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interaction = remember { MutableInteractionSource() }
     val shape = MaterialTheme.shapes.medium
     Surface(
@@ -597,7 +718,17 @@ private fun GoalChoiceCard(goal: Goal, compact: Boolean, onClick: () -> Unit, mo
         Column(Modifier.heightIn(min = if (compact) 50.dp else 60.dp).padding(horizontal = 20.dp, vertical = if (compact) 10.dp else 14.dp)) {
             FitBlock(goal.text, MaterialTheme.typography.titleLarge, MaterialTheme.colorScheme.onSurface, maxLines = 3)
             val why = goal.why
-            if (!why.isNullOrBlank() && !compact) {
+            if (nextStep != null) {
+                Text(
+                    stringResource(R.string.pause_next_step, userText(nextStep)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // One line on short screens, so "None right now" and downtime stay in view.
+                    maxLines = if (compact || isShort()) 1 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            } else if (!why.isNullOrBlank() && !compact) {
                 Text(
                     userText(why),
                     style = MaterialTheme.typography.bodyMedium,
@@ -612,7 +743,7 @@ private fun GoalChoiceCard(goal: Goal, compact: Boolean, onClick: () -> Unit, mo
 }
 
 @Composable
-private fun NoGoalRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun QuietRow(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = MaterialTheme.shapes.medium
     Surface(
         onClick = onClick,
@@ -622,7 +753,7 @@ private fun NoGoalRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
     ) {
         Text(
-            stringResource(R.string.pause_no_goal),
+            text,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.heightIn(min = 52.dp).padding(horizontal = 20.dp, vertical = 16.dp),
@@ -639,6 +770,7 @@ private fun NoGoalRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
 private fun QuestionPart(
     appLabel: String,
     goal: Goal?,
+    nextStep: String?,
     answer: Answer?,
     line: ReflectionLine?,
     tone: Tone,
@@ -666,6 +798,15 @@ private fun QuestionPart(
                     maxLines = 3,
                     minFontSize = 18.sp,
                 )
+                // The goal's next step, read-only. It is checked off in the Goals tab, not here.
+                if (nextStep != null) {
+                    Text(
+                        stringResource(R.string.pause_next_step, userText(nextStep)),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.72f),
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
             }
         } else {
             Text(
@@ -766,6 +907,69 @@ private fun QuestionPart(
             answersBlock()
             responseBlock()
         }
+    }
+}
+
+/**
+ * "It's my downtime": how long? Choosing a length settles it (the same calm
+ * ring as an answer), and a sentence says what GoalGate will do.
+ */
+@Composable
+private fun DowntimePart(minutes: Int?, onLength: (Int) -> Unit, onChosenPosition: (Offset) -> Unit) {
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+    Column {
+        SectionLabel(
+            stringResource(R.string.pause_downtime),
+            color = LocalAccent.current.accent,
+            modifier = Modifier.enterAnimation(entered, 0),
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.downtime_how_long),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.fillMaxWidth().enterAnimation(entered, 1),
+        )
+        Spacer(Modifier.height(24.dp))
+        ChoiceRow<Int?>(
+            options = DOWNTIME_LENGTHS,
+            selected = minutes,
+            label = { stringResource(R.string.cooldown_minutes, it ?: 0) },
+            onSelect = { chosen -> chosen?.let(onLength) },
+            modifier = Modifier
+                .enterAnimation(entered, 2)
+                .onGloballyPositioned { if (minutes != null) onChosenPosition(it.boundsInRoot().center) },
+        )
+        val shown by animateFloatAsState(if (minutes != null) 1f else 0f, tween(360, delayMillis = 150), label = "downtimeNote")
+        Text(
+            if (minutes != null) stringResource(R.string.downtime_note, minutes) else "",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.heightIn(min = 72.dp).padding(top = 20.dp).graphicsLayer { alpha = shown },
+        )
+    }
+}
+
+/** The gentle check when a chosen downtime is up and the user is still in the app. */
+@Composable
+private fun DowntimeEndPart(minutes: Int) {
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+    Column {
+        Text(
+            pluralStringResource(R.plurals.downtime_end_title, minutes, minutes),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.fillMaxWidth().enterAnimation(entered, 0),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.downtime_end_question),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.78f),
+            modifier = Modifier.enterAnimation(entered, 1),
+        )
     }
 }
 

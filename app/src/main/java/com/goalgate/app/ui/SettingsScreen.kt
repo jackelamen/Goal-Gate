@@ -118,6 +118,14 @@ fun SettingsScreen(
             )
         }
 
+        // --- Workday (for goals marked "Workday") ---
+        Spacer(Modifier.height(32.dp))
+        WorkdaySection()
+
+        // --- Downtime: hours, weekends, public holidays ---
+        Spacer(Modifier.height(32.dp))
+        DowntimeSection()
+
         // --- Cooldown ---
         Spacer(Modifier.height(32.dp))
         SectionLabel(stringResource(R.string.settings_cooldown))

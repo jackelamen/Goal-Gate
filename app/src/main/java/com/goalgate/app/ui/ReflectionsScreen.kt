@@ -53,6 +53,7 @@ import com.goalgate.app.data.GoalCount
 import com.goalgate.app.data.Week
 import com.goalgate.app.data.WeekSentence
 import com.goalgate.app.data.computeWeek
+import com.goalgate.app.data.nextSteps
 import com.goalgate.app.ui.theme.LocalAccent
 import com.goalgate.app.ui.theme.PineGround
 
@@ -70,15 +71,17 @@ fun ReflectionsScreen() {
     // null until the database has answered, so we never flash "0" by mistake.
     val logs by database.triggerLogDao().observeAll().collectAsStateWithLifecycle(initialValue = null)
     val goals by database.goalDao().observeAll().collectAsStateWithLifecycle(initialValue = null)
+    val steps by database.goalStepDao().observeAll().collectAsStateWithLifecycle(initialValue = null)
     val loadedLogs = logs ?: return
     val loadedGoals = goals ?: return
+    val loadedSteps = steps ?: return
     val week = remember(loadedLogs) { computeWeek(loadedLogs, System.currentTimeMillis()) }
-    ReflectionsContent(week, loadedGoals)
+    ReflectionsContent(week, loadedGoals, nextSteps(loadedSteps).mapValues { it.value.text })
 }
 
 /** The layout, separate from the database so screenshot tests can draw it with sample data. */
 @Composable
-internal fun ReflectionsContent(week: Week, goals: List<Goal>) {
+internal fun ReflectionsContent(week: Week, goals: List<Goal>, nextSteps: Map<Long, String> = emptyMap()) {
     var started by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { started = true }
 
@@ -138,6 +141,11 @@ internal fun ReflectionsContent(week: Week, goals: List<Goal>) {
         CountRow(stringResource(R.string.reflections_closes), week.closes, started)
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         CountRow(stringResource(R.string.reflections_continues), week.continues, started)
+        // Downtime is counted on its own: it is rest the user chose, not an answer.
+        if (week.downtimes > 0) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            DowntimeRow(week.downtimes, week.downtimeMinutes)
+        }
 
         // --- Goals this week ---
         if (week.goals.isNotEmpty()) {
@@ -145,7 +153,7 @@ internal fun ReflectionsContent(week: Week, goals: List<Goal>) {
             SectionLabel(stringResource(R.string.reflections_by_goal))
             Spacer(Modifier.height(4.dp))
             val most = week.goals.maxOf { it.times }
-            for (count in week.goals) GoalWeekRow(count, goals, most, started)
+            for (count in week.goals) GoalWeekRow(count, goals, count.goalId?.let { nextSteps[it] }, most, started)
         }
 
         // --- This week, app by app ---
@@ -223,7 +231,7 @@ private fun CountRow(label: String, value: Int, started: Boolean) {
 
 /** One goal's week: its words and how many times it was picked, with a fine pine line. */
 @Composable
-private fun GoalWeekRow(count: GoalCount, goals: List<Goal>, most: Int, started: Boolean) {
+private fun GoalWeekRow(count: GoalCount, goals: List<Goal>, nextStep: String?, most: Int, started: Boolean) {
     val accent = LocalAccent.current.accent
     val name = when (val id = count.goalId) {
         null -> stringResource(R.string.reflections_no_goal)
@@ -251,10 +259,37 @@ private fun GoalWeekRow(count: GoalCount, goals: List<Goal>, most: Int, started:
                 modifier = Modifier.padding(start = 12.dp, top = 4.dp),
             )
         }
+        if (nextStep != null) {
+            Text(
+                stringResource(R.string.pause_next_step, userText(nextStep)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
         Spacer(Modifier.height(10.dp))
         Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outlineVariant)) {
             Box(Modifier.fillMaxWidth(fill).fillMaxHeight().background(accent))
         }
+    }
+}
+
+/** "Downtime: 3 times, 1 h 45 min chosen". */
+@Composable
+private fun DowntimeRow(times: Int, minutes: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.reflections_downtime), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+            Text(
+                stringResource(R.string.reflections_downtime_minutes, minutes / 60, minutes % 60),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(times.toString(), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
     }
 }
 

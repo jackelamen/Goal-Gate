@@ -1,6 +1,7 @@
 package com.goalgate.app.data
 
 import android.content.Context
+import java.time.DayOfWeek
 import java.util.Locale
 
 /** The two ways GoalGate can detect that an app was opened. */
@@ -57,6 +58,49 @@ class Settings(context: Context) {
     var koreanExplanations: Boolean
         get() = prefs.getBoolean("koreanExplanations", Locale.getDefault().language == "ko")
         set(value) = prefs.edit().putBoolean("koreanExplanations", value).apply()
+
+    // ---- Workday (for goals marked "Workday") ----
+
+    /** Workdays, Monday to Friday by default. */
+    var workdayDays: Set<DayOfWeek>
+        get() = prefs.getString("workdayDays", "1,2,3,4,5")!!.split(',')
+            .mapNotNull { it.toIntOrNull()?.takeIf { n -> n in 1..7 }?.let(DayOfWeek::of) }.toSet()
+        set(value) = prefs.edit().putString("workdayDays", value.map { it.value }.sorted().joinToString(",")).apply()
+
+    /** Workday hours, 09:00 to 18:00 by default (minutes after midnight). */
+    var workdayHours: TimeWindow
+        get() = TimeWindow(prefs.getInt("workdayStart", 9 * 60), prefs.getInt("workdayEnd", 18 * 60))
+        set(value) = prefs.edit().putInt("workdayStart", value.startMinute).putInt("workdayEnd", value.endMinute).apply()
+
+    val workday: Workday get() = Workday(workdayDays, workdayHours)
+
+    // ---- Scheduled downtime ----
+
+    /** Daily downtime hours (up to [MAX_DOWNTIME_WINDOWS]). None by default. */
+    var downtimeWindows: List<TimeWindow>
+        get() = TimeWindow.decodeList(prefs.getString("downtimeWindows", ""))
+        set(value) = prefs.edit().putString("downtimeWindows", TimeWindow.encodeList(value)).apply()
+
+    /** Saturdays and Sundays count as downtime. */
+    var downtimeWeekends: Boolean
+        get() = prefs.getBoolean("downtimeWeekends", false)
+        set(value) = prefs.edit().putBoolean("downtimeWeekends", value).apply()
+
+    /** Public holidays (of [holidayCountry]) count as downtime. */
+    var downtimeHolidays: Boolean
+        get() = prefs.getBoolean("downtimeHolidays", false)
+        set(value) = prefs.edit().putBoolean("downtimeHolidays", value).apply()
+
+    val downtimeSchedule: DowntimeSchedule
+        get() = DowntimeSchedule(downtimeWindows, downtimeWeekends, downtimeHolidays)
+
+    /**
+     * Whose public holidays to use ("KR", "US"...), or "" for none. Holidays
+     * are never workdays, and can count as downtime (see [downtimeHolidays]).
+     */
+    var holidayCountry: String
+        get() = prefs.getString("holidayCountry", "")!!
+        set(value) = prefs.edit().putString("holidayCountry", value).apply()
 
     /** Has the user read and accepted the accessibility disclosure? */
     var accessibilityDisclosureAccepted: Boolean

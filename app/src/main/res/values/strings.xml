@@ -92,6 +92,23 @@
     <string name="question_continue_wait">Continue to %1$s in %2$d</string>
     <string name="question_close">Close</string>
 
+    <!-- Downtime and next steps on the pause -->
+    <string name="pause_downtime">It\'s my downtime</string>
+    <string name="pause_downtime_hours">Your downtime hours</string>
+    <string name="pause_hint_downtime">Choose how long, then where to go.</string>
+    <string name="downtime_how_long">How long is this downtime?</string>
+    <string name="downtime_note">GoalGate will stay quiet in all your chosen apps for %1$d min.</string>
+    <!-- The check when a chosen downtime is up. %1$s = app name. -->
+    <string name="downtime_end_header">Downtime · %1$s</string>
+    <plurals name="downtime_end_title">
+        <item quantity="one">Your minute of downtime is up.</item>
+        <item quantity="other">Your %1$d minutes of downtime are up.</item>
+    </plurals>
+    <string name="downtime_end_question">Keep going, or stop here?</string>
+    <string name="downtime_end_keep_going">Keep going on %1$s</string>
+    <!-- %1$s = the goal's next step, as the user wrote it. -->
+    <string name="pause_next_step">Next step: %1$s</string>
+
     <!-- Goals tab -->
     <string name="goals_title">Goals</string>
     <string name="goals_subtitle">These appear first, each time you open a chosen app.</string>
@@ -120,6 +137,25 @@
     <string name="goal_delete">Delete goal</string>
     <string name="goal_delete_confirm">Tap again to delete</string>
 
+    <!-- Goal editor: when, and steps -->
+    <string name="goal_when">When</string>
+    <string name="goal_when_always">Always</string>
+    <string name="goal_when_workday">Workday</string>
+    <string name="goal_when_always_hint">Shown on every pause.</string>
+    <string name="goal_when_workday_hint">Shown only during your workday hours (Settings &gt; Workday), never on days off or public holidays.</string>
+    <string name="steps_title">Steps (optional)</string>
+    <string name="steps_hint">In order. The first step not yet done is shown with the goal. Check steps off in the Goals tab.</string>
+    <string name="steps_add">Add a step</string>
+    <string name="steps_field_hint">e.g. Buy running shoes</string>
+    <string name="step_done">Done</string>
+    <string name="step_not_done">Not done</string>
+    <string name="step_remove">Remove</string>
+    <string name="step_next_label">Next step</string>
+    <!-- Screen reader label for the circle in front of the next step. -->
+    <string name="step_check_off">Check off: %1$s</string>
+    <string name="step_checked_off">Checked off: %1$s</string>
+    <string name="step_undo">Undo</string>
+
     <!-- Reflections tab -->
     <string name="reflections_title">Reflections</string>
     <string name="reflections_subtitle">What happened in the last seven days.</string>
@@ -145,6 +181,8 @@
     <string name="reflections_pauses">Pauses</string>
     <string name="reflections_closes">Times you chose Close</string>
     <string name="reflections_continues">Times you continued</string>
+    <string name="reflections_downtime">Downtime you chose</string>
+    <string name="reflections_downtime_minutes">%1$d h %2$d min in all</string>
     <string name="reflections_by_goal">Goals you chose</string>
     <string name="reflections_no_goal">None right now</string>
     <string name="reflections_removed_goal">A deleted goal</string>
@@ -169,6 +207,17 @@
     <string name="explanations_english">English</string>
     <!-- Keep "한국어" in Korean in every translation. -->
     <string name="explanations_with_korean">English + 한국어</string>
+    <string name="settings_workday">Workday</string>
+    <string name="settings_workday_hint">Goals marked Workday only appear on these days, at these hours. Public holidays count as days off when a country is set below.</string>
+    <string name="settings_downtime">Downtime</string>
+    <string name="settings_downtime_hint">At these times, It\'s my downtime comes first on the pause.</string>
+    <string name="settings_downtime_add">Add downtime hours</string>
+    <string name="settings_downtime_weekends">Weekends</string>
+    <string name="settings_downtime_holidays">Public holidays</string>
+    <string name="settings_holidays">Public holiday calendar</string>
+    <string name="settings_holidays_none">None</string>
+    <string name="settings_holidays_hint">National holidays for %1$d to %2$d are built in, so nothing is downloaded.</string>
+    <string name="settings_time_to">to</string>
     <string name="settings_cooldown">Cooldown</string>
     <string name="settings_cooldown_hint">After you continue to an app, GoalGate will not ask again for that app during this time.</string>
     <string name="cooldown_minutes">%1$d min</string>
@@ -208,7 +257,7 @@
     <string name="privacy_summary_t">Summary</string>
     <string name="privacy_summary">GoalGate does not collect, upload or share any personal information. Everything it records stays on your phone.</string>
     <string name="privacy_stored_t">What GoalGate stores on your phone</string>
-    <string name="privacy_stored">Your goals and their optional \"why\" lines, exactly as you typed them, and when you marked any achieved; the apps you choose; and, each time the pause appears: the app\'s name, the time, how long the pause took to appear, which goal you picked (or none), your answer (Yes, Maybe or No), which reflection line was shown, and whether you chose Close or Continue; and your settings. This is kept in GoalGate\'s private storage, which other apps cannot read.</string>
+    <string name="privacy_stored">Your goals, their optional \"why\" lines and steps, exactly as you typed them, when each goal applies, and when you checked off a step or marked a goal achieved; the apps you choose; and, each time the pause appears: the app\'s name, the time, how long the pause took to appear, which goal you picked (or none), your answer (Yes, Maybe, No, or downtime with its length), which reflection line was shown, and whether you chose Close or Continue; and your settings, including your workday and downtime hours. This is kept in GoalGate\'s private storage, which other apps cannot read.</string>
     <string name="privacy_read_t">What GoalGate reads</string>
     <string name="privacy_read">To know when you open a chosen app, GoalGate reads the name of the app in front, using Android\'s usage access or accessibility service (you choose which in Settings). It never reads what is on your screen, what you type in other apps, your messages or your passwords.</string>
     <string name="privacy_sent_t">What leaves your phone</string>
@@ -228,13 +277,15 @@
     <string name="manual_how_t">How GoalGate works</string>
     <string name="manual_how">When you open an app you chose, GoalGate shows your goals first. Tap the one you\'re working on, answer one question about the app, then tap Close to go to your home screen, or Continue to open the app. GoalGate never blocks an app.</string>
     <string name="manual_goals_t">Your goals</string>
-    <string name="manual_goals">Write up to five goals in the Goals tab, each up to 60 characters, with an optional one-line \"why\". GoalGate shows them exactly as you wrote them. Use the arrows to change the order, Edit to change or delete one, and Achieved when you reach one. Achieved goals move to a list below, where you can bring them back.</string>
+    <string name="manual_goals">Write up to five goals in the Goals tab, each up to 60 characters, with an optional one-line \"why\". GoalGate shows them exactly as you wrote them. Mark a goal Workday to see it only during your workday (Settings &gt; Workday). A goal can also list steps in order: the first one not yet done appears with the goal, and you check it off in the Goals tab. Use the arrows to change the order, Edit to change or delete a goal, and Achieved when you reach one.</string>
     <string name="manual_apps_t">Choosing apps</string>
     <string name="manual_apps">Open the Apps tab and switch on the apps that should start with a pause. You can change this at any time.</string>
     <string name="manual_pause_t">The pause</string>
     <string name="manual_pause">First, tap the goal you\'re working on, or None right now. Then you see that goal on its own, the app\'s name, and one question that asks whether opening the app helps this goal. If you have no goals left, GoalGate goes straight to the question.</string>
     <string name="manual_answers_t">Yes, Maybe or No</string>
     <string name="manual_answers">There is no wrong answer, and No never blocks the app. After you answer, a short line appears that fits your answer. In Settings &gt; Tone you can choose how it speaks: Gentle or Direct. Settings &gt; Reflection lines can add a Korean version.</string>
+    <string name="manual_downtime_t">Downtime</string>
+    <string name="manual_downtime">On the pause, tap It\'s my downtime, then choose 15, 30 or 60 minutes. Continue opens the app with no wait, and GoalGate leaves all your chosen apps alone for that time. If you are still in a chosen app when the time is up, one check asks whether to keep going. In Settings &gt; Downtime you can set daily downtime hours, weekends and public holidays; at those times, It\'s my downtime comes first.</string>
     <string name="manual_close_t">Close or Continue</string>
     <string name="manual_close">Close takes you to the home screen. Continue opens the app. If you open the same app 3 times within an hour, Continue waits 5 seconds (10 seconds from the 5th time). Close always works straight away.</string>
     <string name="manual_cooldown_t">Cooldown</string>
