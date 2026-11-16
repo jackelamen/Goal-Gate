@@ -11,6 +11,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -776,9 +777,11 @@ private fun responseFor(answer: Answer, tone: Tone): Int = when (answer) {
 }
 
 /**
- * One of the three answers: a white card. The chosen one stays and lifts a
- * little with a fine orange edge; the other two fade back. All three answers
- * look the same before and after: none of them is "wrong".
+ * One of the three answers: a white card. Once answered, the chosen one
+ * settles into the ground (see-through, white text, a fine orange edge) and
+ * the other two fade back, so the eye moves on to the response and to Close
+ * instead of resting on what was already decided. All three answers look the
+ * same before and after: none of them is "wrong".
  */
 @Composable
 private fun AnswerCard(
@@ -793,8 +796,14 @@ private fun AnswerCard(
     val accent = LocalAccent.current
     val interaction = remember { MutableInteractionSource() }
     val shape = MaterialTheme.shapes.medium
-    val alpha by animateFloatAsState(if (dimmed) 0.24f else 1f, tween(260), label = "answerAlpha")
-    val elevation by animateDpAsState(if (chosen) 18.dp else if (dimmed) 0.dp else 8.dp, label = "answerElevation")
+    val alpha by animateFloatAsState(if (dimmed) 0.14f else 1f, tween(260), label = "answerAlpha")
+    val elevation by animateDpAsState(if (chosen || dimmed) 0.dp else 8.dp, label = "answerElevation")
+    val container by animateColorAsState(
+        if (chosen) Color.White.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface, tween(360), label = "answerFill",
+    )
+    val content by animateColorAsState(
+        if (chosen) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface, tween(360), label = "answerText",
+    )
     val edge by animateFloatAsState(if (chosen) 1f else 0f, tween(300), label = "answerEdge")
     val (main, example) = when (option) {
         Answer.YES -> R.string.answer_yes to R.string.answer_yes_example
@@ -805,7 +814,7 @@ private fun AnswerCard(
         onClick = onClick,
         enabled = enabled,
         shape = shape,
-        color = MaterialTheme.colorScheme.surface,
+        color = container,
         interactionSource = interaction,
         border = if (edge > 0f) BorderStroke(2.dp, accent.accent.copy(alpha = edge)) else null,
         modifier = modifier
@@ -815,17 +824,17 @@ private fun AnswerCard(
             .shadow(
                 elevation = elevation,
                 shape = shape,
-                ambientColor = if (chosen) accent.accent else Color.Black.copy(alpha = 0.35f),
-                spotColor = if (chosen) accent.accent else Color.Black.copy(alpha = 0.35f),
+                ambientColor = Color.Black.copy(alpha = 0.35f),
+                spotColor = Color.Black.copy(alpha = 0.35f),
             ),
     ) {
         Column(Modifier.heightIn(min = if (compact) 48.dp else 58.dp).padding(horizontal = 20.dp, vertical = if (compact) 10.dp else 14.dp)) {
-            Text(stringResource(main), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(stringResource(main), style = MaterialTheme.typography.titleMedium, color = content)
             if (example != null && !compact) {
                 Text(
                     stringResource(example),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = content.copy(alpha = 0.62f),
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
