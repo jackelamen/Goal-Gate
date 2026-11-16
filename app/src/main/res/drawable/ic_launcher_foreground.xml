@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher icon: the summit mark. A white ridge rising to one peak, with the
-     signal-orange dot above it, on the pine ground (ic_launcher.xml). -->
+<!-- Launcher icon: the sun coming up behind a dark ridge, with the white summit
+     line on top, on the dawn sky (ic_launcher_background.xml). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- The sun -->
     <path
-        android:pathData="M31,67 L44.8,54.4 L50.3,59.2 L61.4,44.6 L77,67"
-        android:strokeWidth="4.6"
+        android:fillColor="#FFFFC043"
+        android:pathData="M62,45 m-11,0 a11,11 0 1 0 22,0 a11,11 0 1 0 -22,0" />
+    <!-- The ridge in front of it, filled to the bottom of the icon -->
+    <path
+        android:fillColor="#FF16113F"
+        android:pathData="M0,108 L0,74 L31,66 L44.8,53.4 L50.3,58.2 L61.4,43.6 L77,66 L108,76 L108,108 Z" />
+    <!-- The summit line -->
+    <path
+        android:pathData="M31,66 L44.8,53.4 L50.3,58.2 L61.4,43.6 L77,66"
+        android:strokeWidth="4.2"
         android:strokeColor="#FFFFFFFF"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
-    <path
-        android:fillColor="#FFFF6A2B"
-        android:pathData="M61.4,34.4 m-5.2,0 a5.2,5.2 0 1 0 10.4,0 a5.2,5.2 0 1 0 -10.4,0" />
 </vector>

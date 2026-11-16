@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon background: the dawn sky, night blue at the top to rose at the bottom. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#FF15164F"
+        android:centerColor="#FF48298C"
+        android:endColor="#FFB03580" />
+</shape>

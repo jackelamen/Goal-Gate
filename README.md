@@ -8,6 +8,10 @@ and nothing leaves the phone.
 ![The pause: goals, the question, the choice](docs/pause-screen.png)
 ![Goals, Reflections, Settings and setup](docs/app-screens.png)
 
+The look is "sunrise on the trail": a dawn sky with mountain ridges and a
+rising sun on the pause, warm paper elsewhere, and one bright colour per goal
+(design rules at the top of `ui/theme/Theme.kt`).
+
 GoalGate is built on WordGate's foundation (detection, permissions,
 onboarding, cooldown, time check, escalation, widget, Korean support).
 
@@ -173,5 +177,5 @@ the user typed them, in any language.
 
 Settings > Help > About & legal: privacy policy (English and Korean),
 open-source licences (`app/src/main/assets/licenses/`), trademarks.
-Fonts: DM Serif Display and Figtree, SIL Open Font License 1.1 (`licenses/`).
+Fonts: Bricolage Grotesque and Figtree, SIL Open Font License 1.1 (`licenses/`).
 The reflection lines were written for GoalGate and quote no one.

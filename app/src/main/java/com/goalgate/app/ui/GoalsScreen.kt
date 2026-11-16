@@ -33,6 +33,8 @@ import com.goalgate.app.data.moveItem
 import com.goalgate.app.data.nextSteps
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -92,6 +94,7 @@ import com.goalgate.app.data.moveGoal
 import com.goalgate.app.data.nextPosition
 import com.goalgate.app.data.renumber
 import com.goalgate.app.ui.theme.LocalAccent
+import com.goalgate.app.ui.theme.goalColor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -148,7 +151,7 @@ fun GoalsScreen() {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            // The calm celebration: a small pine card that rises in for a few seconds.
+            // The calm celebration: a small dawn-sky card that rises in, with a short burst of confetti for a few seconds.
             AnimatedVisibility(
                 visible = justAchieved != null,
                 enter = fadeIn(tween(300)) + slideInVertically(tween(420)) { it / 3 },
@@ -322,7 +325,11 @@ private fun GoalCard(
     onAchieved: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxWidth().card().padding(start = 20.dp, end = 8.dp, top = 18.dp, bottom = 6.dp)) {
+    // The stripe on the left is the goal's own colour, the same one it has on the pause.
+    Column(
+        modifier.fillMaxWidth().card().clip(MaterialTheme.shapes.medium).goalStripe(goalColor(goal.id))
+            .padding(start = 24.dp, end = 8.dp, top = 18.dp, bottom = 6.dp),
+    ) {
         if (goal.schedule == Goal.SCHEDULE_WORKDAY) {
             SectionLabel(stringResource(R.string.goal_when_workday), modifier = Modifier.padding(bottom = 4.dp))
         }
@@ -338,7 +345,7 @@ private fun GoalCard(
                 modifier = Modifier.padding(top = 4.dp, end = 12.dp),
             )
         }
-        if (nextStep != null) NextStepRow(nextStep, onCheck = { onCheckStep(nextStep) })
+        if (nextStep != null) NextStepRow(nextStep, goalColor(goal.id), onCheck = { onCheckStep(nextStep) })
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             SmallAction("↑", stringResource(R.string.goals_move_up), enabled = canMoveUp) { onMove(-1) }
@@ -355,8 +362,7 @@ private fun GoalCard(
  * circle checks the step off; the following step then takes its place.
  */
 @Composable
-private fun NextStepRow(step: GoalStep, onCheck: () -> Unit) {
-    val accent = LocalAccent.current.accent
+private fun NextStepRow(step: GoalStep, accent: Color, onCheck: () -> Unit) {
     val description = stringResource(R.string.step_check_off, step.text)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -375,7 +381,7 @@ private fun NextStepRow(step: GoalStep, onCheck: () -> Unit) {
                 .clickable(role = Role.Checkbox, onClick = onCheck)
                 .semantics { contentDescription = description },
         ) {
-            Box(Modifier.size(20.dp).border(1.6.dp, accent, CircleShape))
+            Box(Modifier.size(22.dp).border(2.2.dp, accent, CircleShape))
         }
         Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
             SectionLabel(stringResource(R.string.step_next_label))
@@ -445,10 +451,15 @@ private fun AchievedRow(goal: Goal, canRestore: Boolean, onRestore: () -> Unit, 
 private fun AchievedBanner(goalText: String, modifier: Modifier = Modifier) {
     HeroGround(
         modifier = modifier.fillMaxWidth().clip(MaterialTheme.shapes.large),
-        peak = Offset(0.9f, 0.2f),
         fullScreen = false,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(20.dp)) {
+        // A short burst in the five goal colours, from the mark.
+        var origin by remember { mutableStateOf(Offset.Zero) }
+        ConfettiBurst(burstKey = goalText.takeIf { it.isNotEmpty() && origin != Offset.Zero }, origin = origin, modifier = Modifier.matchParentSize())
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 28.dp).onGloballyPositioned { origin = Offset(it.size.height / 2f + 40f, it.size.height / 2f + 60f) },
+        ) {
             SummitMark(drawIn = true, celebrate = true, lineColor = MaterialTheme.colorScheme.onBackground)
             Spacer(Modifier.width(14.dp))
             Column {

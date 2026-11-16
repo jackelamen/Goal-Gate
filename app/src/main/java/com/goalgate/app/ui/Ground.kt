@@ -15,50 +15,59 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
-import com.goalgate.app.ui.theme.Contour
+import com.goalgate.app.ui.theme.HeroAccent
+import com.goalgate.app.ui.theme.HeroColors
 import com.goalgate.app.ui.theme.LocalAccent
-import com.goalgate.app.ui.theme.PineColors
-import com.goalgate.app.ui.theme.PineDeep
-import com.goalgate.app.ui.theme.PineGround
-import com.goalgate.app.ui.theme.SignalAccent
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.max
+import com.goalgate.app.ui.theme.RidgeFar
+import com.goalgate.app.ui.theme.RidgeMid
+import com.goalgate.app.ui.theme.RidgeNear
+import com.goalgate.app.ui.theme.SkyNight
+import com.goalgate.app.ui.theme.SkyRose
+import com.goalgate.app.ui.theme.SkyViolet
+import com.goalgate.app.ui.theme.Sun
+import com.goalgate.app.ui.theme.SunGlow
 import kotlin.math.sin
 
 /*
- * THE PINE GROUND: where GoalGate shows its character.
+ * THE DAWN SKY: where GoalGate shows its character.
  *
- * Most screens are quiet paper. The moments that matter (the pause, the
- * welcome, the week card) sit on a deep pine ground instead, with faint
- * contour lines behind the content, like the lines on a trail map around a
- * summit. They never move: the only thing that breathes on these screens is
- * the dot at the top of the summit mark.
+ * Most screens are warm paper. The moments that matter (the pause, the
+ * welcome, the week card) sit on a sunrise instead:
  *
- * The lines are drawn at 6% white (every fifth one a little stronger, as on a
- * real map), so they give depth without competing with the text in front.
+ *   - the sky, night blue at the top, through violet, to rose at the horizon;
+ *   - a few last stars near the top;
+ *   - the sun coming up behind the mountains, with its glow;
+ *   - three ridges in front, the nearest one darkest. The buttons at the
+ *     bottom of the pause sit on the dark ridges, so they stay easy to read.
+ *
+ * Nothing here moves: the only thing that breathes on these screens is the
+ * sun in the summit mark. The shapes come from fixed sine waves, so the
+ * picture is identical every time and is worked out once per size.
  */
 
 /**
- * Draws the pine background and its contour lines, and switches the colours
- * of everything inside it: text becomes white, the main button becomes white,
- * and the accent becomes the signal orange.
+ * Draws the dawn sky and switches the colours of everything inside it: text
+ * becomes white, the main button becomes white, and the accent becomes the
+ * sun gold.
  *
- * @param peak        where the summit of the contour lines sits, as fractions
- *                    of the width and height. Keep it away from the main text.
+ * @param sunX        where the sun rises, as a fraction of the width.
+ * @param horizon     where the mountains begin, as a fraction of the height.
+ *                    Text below it sits on the dark ridges. The welcome screen
+ *                    raises it, so its paragraphs are on the mountains.
  * @param fullScreen  true when this fills the whole window (it then also makes
  *                    the status bar icons light). Use false for a card.
  */
 @Composable
 fun HeroGround(
     modifier: Modifier = Modifier,
-    peak: Offset = Offset(0.86f, 0.78f),
+    sunX: Float = 0.8f,
     fullScreen: Boolean = true,
+    horizon: Float = if (fullScreen) 0.77f else 0.72f,
     content: @Composable BoxScope.() -> Unit,
 ) {
     if (fullScreen) LightStatusBarIcons()
@@ -66,61 +75,63 @@ fun HeroGround(
     Box(
         modifier
             .clipToBounds()
-            .background(Brush.verticalGradient(listOf(PineGround, PineDeep))),
+            .background(Brush.verticalGradient(0f to SkyNight, 0.5f to SkyViolet, 0.86f to SkyRose))
+            .sunrise(sunX, horizon, showSun = fullScreen),
     ) {
-        Box(Modifier.matchParentSize().contourLines(peak))
-        // Everything in front uses the "on pine" colours.
-        CompositionLocalProvider(LocalAccent provides SignalAccent) {
-            MaterialTheme(colorScheme = PineColors, content = { content() })
+        // Everything in front uses the "on the dawn sky" colours.
+        CompositionLocalProvider(LocalAccent provides HeroAccent) {
+            MaterialTheme(colorScheme = HeroColors, content = { content() })
         }
     }
 }
 
-/**
- * Nested, slightly irregular rings around [peak], like the contour lines of
- * a hill. The shapes come from fixed sine waves, so they are identical every
- * time (no randomness) and are worked out once per size.
- */
-private fun Modifier.contourLines(peak: Offset): Modifier = drawWithCache {
-    val center = Offset(size.width * peak.x, size.height * peak.y)
-    val paths = contourPaths(size, center)
-    val thin = Stroke(width = 1.dp.toPx())
-    val index = Stroke(width = 1.4.dp.toPx())
+/** Stars, the sun and its glow, and the three ridges. */
+private fun Modifier.sunrise(sunX: Float, horizonAt: Float, showSun: Boolean): Modifier = drawWithCache {
+    val w = size.width
+    val h = size.height
+    val horizon = h * horizonAt
+    val far = ridge(size, top = horizon, height = h * 0.050f, waves = 2.1f, shift = 0.4f)
+    val mid = ridge(size, top = horizon + (h - horizon) * 0.34f, height = h * 0.045f, waves = 3.3f, shift = 2.0f)
+    val near = ridge(size, top = horizon + (h - horizon) * 0.64f, height = h * 0.035f, waves = 2.6f, shift = 4.1f)
+    // The sun is mostly behind the far ridge: only its top shows, clear of the text above.
+    val sun = Offset(w * sunX, horizon + w * 0.035f)
+    val glow = Brush.radialGradient(
+        0f to SunGlow.copy(alpha = 0.85f), 0.45f to SunGlow.copy(alpha = 0.32f), 1f to Color.Transparent,
+        center = sun, radius = w * 0.62f,
+    )
+    val starSize = 1.3.dp.toPx()
     onDrawBehind {
-        paths.forEachIndexed { i, path ->
-            val isIndex = i % 5 == 4
-            drawPath(path, Contour, alpha = if (isIndex) 0.11f else 0.06f, style = if (isIndex) index else thin)
+        // A few last stars, fading towards the horizon. Fixed places, not random.
+        for (i in 0 until 16) {
+            val x = w * ((i * 0.618f + 0.11f) % 1f)
+            val y = h * 0.42f * ((i * 0.377f + 0.07f) % 1f)
+            drawCircle(Color.White, radius = starSize * (0.6f + (i % 3) * 0.3f), center = Offset(x, y), alpha = 0.55f * (1f - y / (h * 0.42f)) + 0.1f)
         }
+        drawRect(glow)
+        // On a card there is only the glow: numbers sit where the sun would be.
+        if (showSun) drawCircle(Sun, radius = w * 0.07f, center = sun)
+        drawPath(far, RidgeFar)
+        drawPath(mid, RidgeMid)
+        drawPath(near, RidgeNear)
     }
 }
 
-private fun contourPaths(size: Size, center: Offset): List<Path> {
-    val reach = max(size.width, size.height) * 1.25f
-    val step = max(size.width, size.height) * 0.052f
-    val rings = (reach / step).toInt().coerceAtMost(40)
-    return List(rings) { k ->
-        val base = step * (k + 1)
-        Path().apply {
-            val points = 96
-            for (p in 0..points) {
-                val t = (p.toFloat() / points) * 2f * PI.toFloat()
-                // Two slow waves bend each ring; they drift a little from ring to ring,
-                // so the slopes look steeper on one side, as on a real hill.
-                val wobble = 1f + 0.10f * sin(3f * t + k * 0.35f) + 0.06f * sin(5f * t - k * 0.6f) +
-                    0.05f * cos(2f * t + 1.3f)
-                val r = base * wobble
-                val x = center.x + r * cos(t) * 1.15f
-                val y = center.y + r * sin(t) * 0.9f
-                if (p == 0) moveTo(x, y) else lineTo(x, y)
-            }
-            close()
-        }
+/** One mountain ridge: a wavy line at [top], filled down to the bottom edge. */
+private fun ridge(size: Size, top: Float, height: Float, waves: Float, shift: Float): Path = Path().apply {
+    val steps = 48
+    moveTo(0f, size.height)
+    for (i in 0..steps) {
+        val t = i.toFloat() / steps
+        val y = top - height * (0.62f * sin(t * waves * 3.1416f + shift) + 0.38f * sin(t * waves * 2.3f * 3.1416f + shift * 1.7f))
+        lineTo(size.width * t, y)
     }
+    lineTo(size.width, size.height)
+    close()
 }
 
 /**
  * Makes the status bar icons (clock, battery) light while a full-screen
- * pine ground is showing, and puts them back afterwards.
+ * dawn sky is showing, and puts them back afterwards.
  */
 @Composable
 private fun LightStatusBarIcons() {

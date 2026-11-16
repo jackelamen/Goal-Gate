@@ -528,12 +528,13 @@ private fun appLabel(context: Context, packageName: String): String = try {
 }
 
 /**
- * Step 0: the first thing a new user sees. One sentence on the pine ground,
+ * Step 0: the first thing a new user sees. One sentence on the dawn sky,
  * with the summit mark drawing itself in above it.
  */
 @Composable
 private fun WelcomeStep(onNext: () -> Unit) {
-    HeroGround(Modifier.fillMaxSize(), peak = Offset(0.8f, 0.22f)) {
+    // The mountains start high here, so the headline and paragraphs sit on them.
+    HeroGround(Modifier.fillMaxSize(), sunX = 0.72f, horizon = 0.40f) {
         val softWhite = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.78f)
         Column(
             Modifier

@@ -2,7 +2,7 @@
 <!--
     The home-screen widget (see ui/GoalGateWidget.kt).
     Today's goal, in the user's own words, and a "Check in" button that opens
-    the Goals tab. Pine background, white text, the summit mark at the top.
+    the Goals tab. Dawn-sky background, white text, the summit mark at the top.
     Widgets only allow certain view types (LinearLayout, FrameLayout,
     TextView, ImageView), so nothing else is used here.
 -->
@@ -46,7 +46,7 @@
         android:layout_marginTop="8dp"
         android:layout_weight="1"
         android:ellipsize="end"
-        android:fontFamily="@font/dm_serif_display"
+        android:fontFamily="@font/bricolage_grotesque"
         android:maxLines="3"
         android:textColor="#FFFFFFFF"
         android:textSize="21sp" />

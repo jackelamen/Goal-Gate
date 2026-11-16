@@ -55,7 +55,8 @@ import com.goalgate.app.data.WeekSentence
 import com.goalgate.app.data.computeWeek
 import com.goalgate.app.data.nextSteps
 import com.goalgate.app.ui.theme.LocalAccent
-import com.goalgate.app.ui.theme.PineGround
+import com.goalgate.app.ui.theme.SkyViolet
+import com.goalgate.app.ui.theme.goalColor
 
 /**
  * The Reflections tab: the last seven days, described plainly.
@@ -111,9 +112,8 @@ internal fun ReflectionsContent(week: Week, goals: List<Goal>, nextSteps: Map<Lo
         HeroGround(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(18.dp, MaterialTheme.shapes.large, ambientColor = PineGround, spotColor = PineGround)
+                .shadow(18.dp, MaterialTheme.shapes.large, ambientColor = SkyViolet, spotColor = SkyViolet)
                 .clip(MaterialTheme.shapes.large),
-            peak = Offset(0.95f, 0.15f),
             fullScreen = false,
         ) {
             Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 26.dp)) {
@@ -229,7 +229,7 @@ private fun CountRow(label: String, value: Int, started: Boolean) {
     }
 }
 
-/** One goal's week: its words and how many times it was picked, with a fine pine line. */
+/** One goal's week: its words and how many times it was picked, with a fine line in its colour. */
 @Composable
 private fun GoalWeekRow(count: GoalCount, goals: List<Goal>, nextStep: String?, most: Int, started: Boolean) {
     val accent = LocalAccent.current.accent
@@ -269,7 +269,8 @@ private fun GoalWeekRow(count: GoalCount, goals: List<Goal>, nextStep: String?, 
         }
         Spacer(Modifier.height(10.dp))
         Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outlineVariant)) {
-            Box(Modifier.fillMaxWidth(fill).fillMaxHeight().background(accent))
+            // The goal's own colour ("None right now" has none).
+            Box(Modifier.fillMaxWidth(fill).fillMaxHeight().background(count.goalId?.let { goalColor(it) } ?: accent))
         }
     }
 }

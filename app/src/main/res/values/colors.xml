@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Only colors needed outside Compose live here. See ui/theme/Theme.kt for the full palette. -->
-    <color name="window_background">#ECEFEA</color>
-    <color name="pine_ground">#0F2A26</color>
+    <color name="window_background">#FFF7EE</color>
 </resources>

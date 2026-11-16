@@ -58,7 +58,7 @@ private val PRIVACY_SECTIONS = listOf(
 private data class Component(val name: String, val owner: String, val licence: String, val file: String)
 
 private val COMPONENTS = listOf(
-    Component("DM Serif Display (font)", "Adobe, Google LLC", "SIL Open Font License 1.1", "ofl-dm-serif-display.txt"),
+    Component("Bricolage Grotesque (font)", "The Bricolage Grotesque Project Authors", "SIL Open Font License 1.1", "ofl-bricolage-grotesque.txt"),
     Component("Figtree (font)", "The Figtree Project Authors", "SIL Open Font License 1.1", "ofl-figtree.txt"),
     Component("Jetpack Compose, Material 3", "The Android Open Source Project", "Apache License 2.0", "apache-2.0.txt"),
     Component("AndroidX Core, Activity, Lifecycle, Room", "The Android Open Source Project", "Apache License 2.0", "apache-2.0.txt"),

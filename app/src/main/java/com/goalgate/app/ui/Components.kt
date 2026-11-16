@@ -40,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -58,6 +60,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goalgate.app.ui.theme.LocalAccent
+import com.goalgate.app.ui.theme.Sun
 
 /*
  * Small building blocks shared by several screens.
@@ -128,6 +131,10 @@ fun Modifier.card(shape: Shape = MaterialTheme.shapes.medium, elevation: Dp = 10
     this
         .shadow(elevation, shape, ambientColor = Color.Black.copy(alpha = 0.10f), spotColor = Color.Black.copy(alpha = 0.10f))
         .background(MaterialTheme.colorScheme.surface, shape)
+
+/** Draws a goal's colour as a stripe down the left edge of a card. */
+fun Modifier.goalStripe(color: Color): Modifier =
+    this.drawBehind { drawRect(color, size = Size(8.dp.toPx(), size.height)) }
 
 /** The main action on a screen: a solid ink pill. Use at most one per screen. */
 @Composable
@@ -250,7 +257,7 @@ fun <T> ChoiceRow(
 
 /**
  * The summit mark: GoalGate's signature. A short ridge line rising to one
- * peak, with a dot on top in the accent (signal orange on the pine ground).
+ * peak, with the sun coming up over it.
  *
  * With [breathing] the dot swells and settles slowly, like a calm breath.
  * When [celebrate] becomes true the dot lifts once and a soft ring spreads
@@ -264,7 +271,8 @@ fun SummitMark(
     drawIn: Boolean = false,
     lineColor: Color = MaterialTheme.colorScheme.onBackground,
 ) {
-    val accent = LocalAccent.current.accent
+    // The sun is always sun gold, on the dawn sky and on paper alike.
+    val accent = Sun
 
     val transition = rememberInfiniteTransition(label = "breathing")
     val breath by transition.animateFloat(
@@ -310,7 +318,7 @@ fun SummitMark(
         }
 
         val peak = Offset(w * 0.66f, h * 0.36f - 6.dp.toPx())
-        val radius = 3.2.dp.toPx() * lift.value
+        val radius = 3.8.dp.toPx() * lift.value
         if (breathing) {
             drawCircle(accent, radius = radius + 2.dp.toPx() + 5.dp.toPx() * breath, center = peak, alpha = 0.22f - 0.16f * breath)
         }
@@ -323,7 +331,7 @@ fun SummitMark(
 }
 
 /**
- * The Close button on the pause: a solid pill in the signal orange with ink
+ * The Close button on the pause: a solid pill in the sun gold with ink
  * text. It is the one place the spark is used for a control, because Close is
  * the choice GoalGate exists to encourage.
  */

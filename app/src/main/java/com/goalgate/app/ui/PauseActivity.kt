@@ -85,6 +85,7 @@ import com.goalgate.app.data.pickLine
 import com.goalgate.app.detection.GateController
 import com.goalgate.app.ui.theme.GoalGateTheme
 import com.goalgate.app.ui.theme.LocalAccent
+import com.goalgate.app.ui.theme.goalColor
 import kotlinx.coroutines.delay
 
 /** The parts of the pause, in order. DOWNTIME replaces QUESTION and CHOICE when chosen. */
@@ -715,7 +716,8 @@ private fun GoalChoiceCard(goal: Goal, nextStep: String?, compact: Boolean, onCl
             .pressScale(interaction)
             .shadow(10.dp, shape, ambientColor = Color.Black.copy(alpha = 0.35f), spotColor = Color.Black.copy(alpha = 0.35f)),
     ) {
-        Column(Modifier.heightIn(min = if (compact) 50.dp else 60.dp).padding(horizontal = 20.dp, vertical = if (compact) 10.dp else 14.dp)) {
+        // The stripe on the left is the goal's own colour.
+        Column(Modifier.fillMaxWidth().goalStripe(goalColor(goal.id)).heightIn(min = if (compact) 50.dp else 60.dp).padding(start = 24.dp, end = 20.dp, top = if (compact) 10.dp else 14.dp, bottom = if (compact) 10.dp else 14.dp)) {
             FitBlock(goal.text, MaterialTheme.typography.titleLarge, MaterialTheme.colorScheme.onSurface, maxLines = 3)
             val why = goal.why
             if (nextStep != null) {
@@ -787,7 +789,8 @@ private fun QuestionPart(
         // question, so any wording works (a phrase, a sentence, Korean...).
         if (goal != null) {
             Column(Modifier.fillMaxWidth().enterAnimation(entered, 0)) {
-                SectionLabel(stringResource(R.string.pause_your_goal), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                // The label carries the goal's own colour, the same as its card.
+                SectionLabel(stringResource(R.string.pause_your_goal), color = goalColor(goal.id))
                 Spacer(Modifier.height(8.dp))
                 FitBlock(
                     goal.text,

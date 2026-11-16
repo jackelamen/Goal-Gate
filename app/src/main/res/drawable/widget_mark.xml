@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The summit mark for the widget: a white ridge and the signal-orange peak dot. -->
+<!-- The summit mark for the widget: a white ridge and the sun. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="20dp"
     android:height="15dp"
@@ -12,6 +12,6 @@
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:fillColor="#FFFF6A2B"
+        android:fillColor="#FFFFC043"
         android:pathData="M22.4,3.4 m-3.4,0 a3.4,3.4 0 1 0 6.8,0 a3.4,3.4 0 1 0 -6.8,0" />
 </vector>

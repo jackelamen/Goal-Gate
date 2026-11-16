@@ -16,7 +16,6 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,54 +25,76 @@ import com.goalgate.app.R
 /*
  * THE DESIGN SYSTEM (read this before changing any colour or font)
  *
- * The idea: alpine field notes. A trail map at dusk. Calm, grounded, specific.
- * Nothing shouts and nothing scolds; the app only reminds and asks.
+ * The idea: sunrise on the trail. You are partway up, the sky is turning
+ * from night blue to rose and gold, and the day is still yours. The app
+ * should feel awake and on your side. It never scolds and never shouts.
  *
- * COLOUR - five roles, nothing else:
- *   Paper  - backgrounds of the tool screens (Goals, Apps, Settings).
- *            White cards sit on it with a soft shadow.
- *   Ink    - all text, and the one main button on each paper screen.
- *   Pine   - the accent on paper. It marks what is selected or chosen:
- *            the selected tab, the chosen engine, a bar in Reflections.
- *   Pine ground - the deep green-black of the moments that matter: the
- *            pause, the welcome, the week card. Faint contour lines run
- *            across it (see ui/Ground.kt), like a map of the climb.
- *   Signal - the spark: one warm orange, used ONLY on the pine ground and
- *            only for two things: the Close button on the pause (the choice
- *            GoalGate exists to encourage) and the peak of the summit mark.
- *            An achieved goal is the one other place it appears.
- *   There is deliberately no red and no green "good/bad" colour. Answering
- *   No is not a failure, so it never looks like one.
+ * COLOUR:
+ *   Dawn sky - the ground of the moments that matter (the pause, the
+ *            welcome, the week card): night blue at the top, through violet,
+ *            to rose at the horizon, with dark mountain ridges in front and
+ *            the sun's glow behind them (see ui/Ground.kt).
+ *   Sun    - the spark, a warm gold. On the dawn sky it marks the sun in
+ *            the summit mark, the Close button on the pause (the choice
+ *            GoalGate exists to encourage) and the answer you chose.
+ *   Goal colours - each goal gets its own bright colour (coral, sun, sky,
+ *            mint, lilac), kept for as long as the goal exists. It shows as
+ *            the stripe on the goal's card, its bar in Reflections and its
+ *            check-off circle. Colour here means "this goal", nothing else.
+ *   Warm white and night ink - the paper screens (Goals, Apps, Settings).
+ *            Ink is a deep night blue, not black, so the paper screens
+ *            belong to the same sky.
+ *   Rose   - the accent on paper: what is selected or switched on.
+ *   There is deliberately no red/green "good/bad" colour. Answering No is
+ *   not a failure, so it never looks like one.
  *
  * THE SUMMIT MARK - the app's signature:
- *   A short ridge line rising to one peak, with a signal-orange dot on top.
- *   It sits in the pause header (the dot is the only thing that breathes),
- *   in the app icon, under the selected tab, and next to an achieved goal.
+ *   A ridge line rising to one peak, with the sun coming up beside it. It
+ *   sits in the pause header (the sun is the only thing that breathes), in
+ *   the app icon, under the selected tab, and next to an achieved goal.
  *
  * TYPE - two families:
- *   DM Serif Display - goals, questions, headlines and numbers. The user's
- *                      own words are always set in it, so they carry weight.
- *                      Its italic is used for the reflection lines.
- *   Figtree (sans)   - buttons, labels and body text.
- *   Small labels are set in capitals with modest spacing (see SectionLabel).
+ *   Bricolage Grotesque - goals, questions, headlines and numbers: bold,
+ *                         warm and a little quirky. The user's own words
+ *                         are always set in it, so they carry weight.
+ *   Figtree             - buttons, labels, notes and body text.
  */
 
-// Paper and ink
-val Paper = Color(0xFFECEFEA)     // lichen mist: a cool paper from the same landscape as the pine
-val Ink = Color(0xFF14171A)
-val InkSoft = Color(0xFF5C6661)
-val Hairline = Color(0xFFD8DED8)
+// Warm paper and night ink
+val Paper = Color(0xFFFFF7EE)
+val Ink = Color(0xFF1B1745)
+val InkSoft = Color(0xFF5F5A85)
+val Hairline = Color(0xFFEFE3D6)
 
 // The accent on paper
-val Pine = Color(0xFF1D5B4C)
+val Rose = Color(0xFFE5446D)
 
-// The hero ground: a vertical fall from pine to near-black pine
-val PineGround = Color(0xFF0F2A26)
-val PineDeep = Color(0xFF0A1D1A)
-val Contour = Color(0xFFFFFFFF)     // drawn at 6% over the ground
+// The dawn sky, top to horizon, and the ridges in front of it
+val SkyNight = Color(0xFF15164F)
+val SkyViolet = Color(0xFF48298C)
+val SkyRose = Color(0xFFB03580)
+val SunGlow = Color(0xFFFF8A5B)
+val RidgeFar = Color(0xFF5B2B86)
+val RidgeMid = Color(0xFF2E1E63)
+val RidgeNear = Color(0xFF16113F)
 
-// The spark: used only on the pine ground
-val Signal = Color(0xFFFF6A2B)
+// The spark: used only on the dawn sky
+val Sun = Color(0xFFFFC043)
+
+/**
+ * The five goal colours. A goal keeps its colour for life (it follows the
+ * goal's id, not its place in the list), so the user learns "coral is my
+ * running goal". All five are bright enough for the dawn sky and for paper.
+ */
+val GoalColors = listOf(
+    Color(0xFFFF6B5E), // coral
+    Color(0xFFFFB02E), // sun
+    Color(0xFF39A7F2), // sky
+    Color(0xFF22B98A), // mint
+    Color(0xFF9C7BFF), // lilac
+)
+
+fun goalColor(goalId: Long): Color = GoalColors[Math.floorMod(goalId - 1, GoalColors.size.toLong()).toInt()]
 
 private val LightColors = lightColorScheme(
     primary = Ink,
@@ -82,63 +103,64 @@ private val LightColors = lightColorScheme(
     onBackground = Ink,
     surface = Color.White,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFDFE4DF),
+    surfaceVariant = Color(0xFFF6EADD),
     onSurfaceVariant = InkSoft,
-    outline = Color(0xFFC2C9C3),
+    outline = Color(0xFFD9CBBB),
     outlineVariant = Hairline,
     error = Ink,
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFF1EFE9),
+    primary = Color(0xFFF6F1FF),
     onPrimary = Ink,
-    background = Color(0xFF0C1110),
-    onBackground = Color(0xFFF1EFE9),
-    surface = Color(0xFF172120),
-    onSurface = Color(0xFFF1EFE9),
-    surfaceVariant = Color(0xFF1F2B29),
-    onSurfaceVariant = Color(0xFF97A3A0),
-    outline = Color(0xFF34413E),
-    outlineVariant = Color(0xFF22302D),
-    error = Color(0xFFF1EFE9),
+    background = Color(0xFF0F0D2B),
+    onBackground = Color(0xFFF6F1FF),
+    surface = Color(0xFF1C1947),
+    onSurface = Color(0xFFF6F1FF),
+    surfaceVariant = Color(0xFF28245A),
+    onSurfaceVariant = Color(0xFFA9A4D0),
+    outline = Color(0xFF443F7A),
+    outlineVariant = Color(0xFF2A2660),
+    error = Color(0xFFF6F1FF),
 )
 
 /**
- * The colours of anything placed on the pine ground: white text, a white
- * main button with ink text, and white cards. Used by PineGroundBox.
- * It is the same in light and dark mode: the ground is already dark.
+ * The colours of anything placed on the dawn sky: white text, a white main
+ * button with ink text, and white cards. Used by HeroGround.
+ * It is the same in light and dark mode: the sky is already dark.
  */
-val PineColors = darkColorScheme(
+val HeroColors = darkColorScheme(
     primary = Color.White,
     onPrimary = Ink,
-    background = PineGround,
+    background = SkyNight,
     onBackground = Color.White,
-    surface = Color(0xFFF9FAF8),
+    surface = Color.White,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFDFE4DF),
+    surfaceVariant = Color(0xFFF1E9FF),
     onSurfaceVariant = InkSoft,
-    outline = Color.White.copy(alpha = 0.45f),
-    outlineVariant = Color.White.copy(alpha = 0.16f),
+    outline = Color.White.copy(alpha = 0.5f),
+    outlineVariant = Color.White.copy(alpha = 0.2f),
 )
 
 /** The accent, and the colour of text placed on top of it. */
 data class AccentColors(val accent: Color, val onAccent: Color)
 
-private val LightAccent = AccentColors(accent = Pine, onAccent = Color.White)
-private val DarkAccent = AccentColors(accent = Color(0xFF7CC2AC), onAccent = Color(0xFF07211B))
+private val LightAccent = AccentColors(accent = Rose, onAccent = Color.White)
+private val DarkAccent = AccentColors(accent = Color(0xFFFF8FA8), onAccent = Color(0xFF2A0B1C))
 
-/** On the pine ground the accent is the signal orange (with ink on top of it: 6:1 contrast). */
-val SignalAccent = AccentColors(accent = Signal, onAccent = Ink)
+/** On the dawn sky the accent is the sun gold (with ink on top of it). */
+val HeroAccent = AccentColors(accent = Sun, onAccent = Ink)
 
 val LocalAccent = staticCompositionLocalOf { LightAccent }
 
-/** DM Serif Display has one weight (and a true italic). */
-val Serif = FontFamily(
-    Font(R.font.dm_serif_display, FontWeight.Normal, FontStyle.Normal),
-    Font(R.font.dm_serif_display_italic, FontWeight.Normal, FontStyle.Italic),
+/* Both fonts are "variable": one file holds every weight. We ask each for the ones we use. */
+@OptIn(ExperimentalTextApi::class)
+private fun bricolage(weight: Int) = Font(
+    R.font.bricolage_grotesque,
+    weight = FontWeight(weight),
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight), FontVariation.Setting("opsz", 48f)),
 )
 
-/* Figtree is "variable": one file holds every weight. We ask it for the ones we use. */
 @OptIn(ExperimentalTextApi::class)
 private fun figtree(weight: Int) = Font(
     R.font.figtree,
@@ -146,47 +168,47 @@ private fun figtree(weight: Int) = Font(
     variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
 )
 
+val Display = FontFamily(bricolage(600), bricolage(700), bricolage(800))
 val Sans = FontFamily(figtree(400), figtree(500), figtree(600), figtree(700))
 
 private val AppTypography = Typography(
-    // Big counts on the Reflections card
-    displayLarge = TextStyle(fontFamily = Serif, fontSize = 88.sp, lineHeight = 92.sp, letterSpacing = (-2).sp),
+    // Big counts
+    displayLarge = TextStyle(fontFamily = Display, fontWeight = FontWeight(800), fontSize = 84.sp, lineHeight = 88.sp, letterSpacing = (-2).sp),
     // Screen titles and the welcome line
-    headlineLarge = TextStyle(fontFamily = Serif, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-0.4).sp),
-    // The pause question, and a chosen goal on its card
-    headlineMedium = TextStyle(fontFamily = Serif, fontSize = 28.sp, lineHeight = 35.sp, letterSpacing = (-0.2).sp),
+    headlineLarge = TextStyle(fontFamily = Display, fontWeight = FontWeight(800), fontSize = 36.sp, lineHeight = 41.sp, letterSpacing = (-0.8).sp),
+    // The pause title, and a chosen goal
+    headlineMedium = TextStyle(fontFamily = Display, fontWeight = FontWeight(700), fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.4).sp),
     // Goals in lists, numbers in lists
-    titleLarge = TextStyle(fontFamily = Serif, fontSize = 22.sp, lineHeight = 28.sp),
+    titleLarge = TextStyle(fontFamily = Display, fontWeight = FontWeight(700), fontSize = 21.sp, lineHeight = 27.sp, letterSpacing = (-0.2).sp),
     titleMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight(600), fontSize = 16.sp, lineHeight = 22.sp),
     bodyLarge = TextStyle(fontFamily = Sans, fontWeight = FontWeight(400), fontSize = 16.sp, lineHeight = 24.sp),
     bodyMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight(400), fontSize = 14.sp, lineHeight = 21.sp),
     // Buttons
-    labelLarge = TextStyle(fontFamily = Sans, fontWeight = FontWeight(600), fontSize = 15.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp),
+    labelLarge = TextStyle(fontFamily = Sans, fontWeight = FontWeight(700), fontSize = 15.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp),
     // Small capital labels (the text is put in capitals by SectionLabel)
-    labelMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight(600), fontSize = 11.sp, lineHeight = 16.sp, letterSpacing = 1.1.sp),
-    // Italic notes: the reflection lines, hints
-    labelSmall = TextStyle(fontFamily = Serif, fontStyle = FontStyle.Italic, fontSize = 18.sp, lineHeight = 25.sp),
+    labelMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight(700), fontSize = 11.sp, lineHeight = 16.sp, letterSpacing = 1.1.sp),
+    // Notes: the reflection lines, hints
+    labelSmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight(500), fontSize = 16.sp, lineHeight = 23.sp),
 )
 
 private val AppShapes = Shapes(
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
 )
 
 /**
- * The same type scale, adjusted for Korean. DM Serif Display and Figtree have
- * no Korean letters, so Android draws Korean with the phone's own Korean font.
- * That font has no italic (a slanted copy looks wrong), and Korean reads best
- * without the tight or wide letter spacing used for English.
+ * The same type scale, adjusted for Korean. The two fonts have no Korean
+ * letters, so Android draws Korean with the phone's own Korean font, which
+ * reads best without tight letter spacing and a little smaller at big sizes.
  */
 private val KoreanTypography = AppTypography.copy(
     displayLarge = AppTypography.displayLarge.copy(letterSpacing = 0.sp),
     headlineLarge = AppTypography.headlineLarge.copy(letterSpacing = 0.sp, fontSize = 32.sp, lineHeight = 42.sp),
     headlineMedium = AppTypography.headlineMedium.copy(letterSpacing = 0.sp, fontSize = 25.sp, lineHeight = 35.sp),
-    titleLarge = AppTypography.titleLarge.copy(fontSize = 20.sp, lineHeight = 28.sp),
+    titleLarge = AppTypography.titleLarge.copy(letterSpacing = 0.sp, fontSize = 20.sp, lineHeight = 28.sp),
     labelMedium = AppTypography.labelMedium.copy(letterSpacing = 0.3.sp, fontSize = 12.5.sp, lineHeight = 18.sp),
-    labelSmall = AppTypography.labelSmall.copy(fontStyle = FontStyle.Normal, fontFamily = Sans, fontSize = 15.sp, lineHeight = 23.sp),
+    labelSmall = AppTypography.labelSmall.copy(fontSize = 15.sp, lineHeight = 23.sp),
 )
 
 /** Wrap any screen in this to give it GoalGate's colours, fonts and shapes. */
