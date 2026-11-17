@@ -5,12 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
@@ -38,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -235,23 +238,35 @@ private fun DayToggles(selected: Set<DayOfWeek>, onToggle: (DayOfWeek) -> Unit) 
 @Composable
 private fun WindowRow(window: TimeWindow, onChange: (TimeWindow) -> Unit, onRemove: (() -> Unit)? = null) {
     var editingStart by remember { mutableStateOf<Boolean?>(null) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().card().padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-    ) {
-        TimeChip(window.startMinute) { editingStart = true }
-        Text(
-            stringResource(R.string.settings_time_to),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 4.dp),
-        )
-        TimeChip(window.endMinute) { editingStart = false }
-        Spacer(Modifier.weight(1f))
-        if (onRemove != null) {
-            TextButton(onClick = onRemove) {
-                Text(stringResource(R.string.step_remove), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // On a narrow screen with large text, "Remove" moves under the times so nothing is squeezed.
+    BoxWithConstraints(Modifier.fillMaxWidth().card()) {
+        val stacked = onRemove != null && maxWidth < 330.dp / LocalDensity.current.fontScale.coerceAtLeast(1f).let { if (it > 1.15f) 1f else 1.1f }
+        val remove: @Composable () -> Unit = {
+            TextButton(onClick = { onRemove?.invoke() }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) {
+                Text(
+                    stringResource(R.string.step_remove),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                )
             }
+        }
+        Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = if (stacked) 0.dp else 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // The two times share what is left; each shrinks a little rather than wrap.
+                TimeChip(window.startMinute, Modifier.weight(1f)) { editingStart = true }
+                Text(
+                    stringResource(R.string.settings_time_to),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                TimeChip(window.endMinute, Modifier.weight(1f)) { editingStart = false }
+                if (onRemove != null && !stacked) remove()
+            }
+            if (stacked) Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) { remove() }
         }
     }
     editingStart?.let { start ->
@@ -267,9 +282,9 @@ private fun WindowRow(window: TimeWindow, onChange: (TimeWindow) -> Unit, onRemo
 }
 
 @Composable
-private fun TimeChip(minute: Int, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Text(formatTime(minute), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+private fun TimeChip(minute: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = modifier, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)) {
+        FitText(formatTime(minute), MaterialTheme.typography.titleLarge, MaterialTheme.colorScheme.onSurface, minFontSize = 13.sp)
     }
 }
 

@@ -6,7 +6,25 @@ import android.os.Bundle
 import androidx.compose.foundation.Canvas
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -228,49 +246,120 @@ private fun HomeScreen(
             }
         }
 
-        // The bottom bar: four words, no icons to decode.
+        // The bottom bar: four equal columns, each an icon over a word. The icons are the
+        // same size, so the columns look evenly spaced however long the words are, and the
+        // four words share one size (see tabLabelStyle).
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Row(
+        BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
                 .navigationBarsPadding(),
         ) {
+            val tabs = listOf(
+                Triple(Tab.GOALS, TabIcon.GOALS, stringResource(R.string.tab_goals)),
+                Triple(Tab.APPS, TabIcon.APPS, stringResource(R.string.tab_apps)),
+                Triple(Tab.REFLECTIONS, TabIcon.REFLECTIONS, stringResource(R.string.tab_reflections)),
+                Triple(Tab.SETTINGS, TabIcon.SETTINGS, stringResource(R.string.tab_settings)),
+            )
+            val barWidth = minOf(maxWidth, 560.dp)
+            val label = tabLabelStyle(tabs.map { it.third }, barWidth / tabs.size - 8.dp)
             Row(Modifier.readableWidth()) {
-                TabButton(stringResource(R.string.tab_goals), tab == Tab.GOALS, Modifier.weight(1f)) { onTabChange(Tab.GOALS) }
-                TabButton(stringResource(R.string.tab_apps), tab == Tab.APPS, Modifier.weight(1f)) { onTabChange(Tab.APPS) }
-                TabButton(stringResource(R.string.tab_reflections), tab == Tab.REFLECTIONS, Modifier.weight(1f)) { onTabChange(Tab.REFLECTIONS) }
-                TabButton(stringResource(R.string.tab_settings), tab == Tab.SETTINGS, Modifier.weight(1f)) { onTabChange(Tab.SETTINGS) }
+                for ((value, icon, text) in tabs) {
+                    TabButton(text, icon, label, tab == value, Modifier.weight(1f)) { onTabChange(value) }
+                }
             }
         }
     }
 }
 
+/**
+ * One text style for all four tab words: the normal size, or, if the longest
+ * word would not fit its column (a narrow screen, large text), the same smaller
+ * size for every word, so the bar never looks uneven.
+ */
 @Composable
-private fun TabButton(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun tabLabelStyle(labels: List<String>, columnWidth: Dp): TextStyle {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val base = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, letterSpacing = 0.2.sp)
+    return remember(labels, columnWidth, base, density) {
+        val available = with(density) { columnWidth.toPx() }
+        val widest = labels.maxOf { measurer.measure(it, base, maxLines = 1, softWrap = false).size.width }
+        if (widest <= available) base else base.copy(fontSize = (12f * available / widest).coerceAtLeast(9f).sp)
+    }
+}
+
+/** The four icons, drawn as fine rounded lines in the same hand as the summit mark. */
+private enum class TabIcon { GOALS, APPS, REFLECTIONS, SETTINGS }
+
+@Composable
+private fun TabButton(text: String, icon: TabIcon, style: TextStyle, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val accent = LocalAccent.current.accent
     val color by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "tabColor",
     )
-    // The selected tab is marked by a tiny peak (the summit mark, reduced to its
-    // ridge) that rises from nothing.
-    val rise by animateFloatAsState(if (selected) 1f else 0f, label = "tabPeak")
-    val accent = LocalAccent.current.accent
+    // A soft pill grows behind the selected icon.
+    val pill by animateFloatAsState(if (selected) 1f else 0f, label = "tabPill")
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .clickable(role = Role.Tab, onClick = onClick)
-            .padding(top = 18.dp, bottom = 12.dp),
+            .padding(top = 8.dp, bottom = 8.dp)
+            .semantics { contentDescription = text; this.selected = selected },
     ) {
-        FitText(text.uppercase(), MaterialTheme.typography.labelMedium, color, minFontSize = 8.sp)
-        Spacer(Modifier.height(7.dp))
-        Canvas(Modifier.size(width = 14.dp, height = 6.dp)) {
-            if (rise > 0f) {
-                val h = size.height * rise
-                val stroke = 1.6.dp.toPx()
-                drawLine(accent, Offset(0f, size.height), Offset(size.width / 2, size.height - h), stroke, StrokeCap.Round)
-                drawLine(accent, Offset(size.width / 2, size.height - h), Offset(size.width, size.height), stroke, StrokeCap.Round)
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(width = 56.dp, height = 32.dp)) {
+            Box(
+                Modifier
+                    .size(width = 56.dp * pill, height = 32.dp)
+                    .background(accent.copy(alpha = 0.16f * pill), CircleShape),
+            )
+            Canvas(Modifier.size(24.dp)) { drawTabIcon(icon, color) }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text,
+            style = style,
+            color = color,
+            maxLines = 1,
+            softWrap = false,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Draws [icon] in a 24 by 24 box with a 1.8 dp rounded line. */
+private fun DrawScope.drawTabIcon(icon: TabIcon, color: Color) {
+    val u = size.width / 24f
+    val line = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+    fun p(x: Float, y: Float) = Offset(x * u, y * u)
+    when (icon) {
+        // A flag on a pole: the goal you are heading for.
+        TabIcon.GOALS -> {
+            drawLine(color, p(6f, 21f), p(6f, 3.5f), line.width, StrokeCap.Round)
+            drawPath(
+                Path().apply { moveTo(6f * u, 4.5f * u); lineTo(18.5f * u, 8.5f * u); lineTo(6f * u, 13f * u) },
+                color, style = line,
+            )
+        }
+        // Four rounded tiles.
+        TabIcon.APPS -> for ((x, y) in listOf(4f to 4f, 13.5f to 4f, 4f to 13.5f, 13.5f to 13.5f)) {
+            drawRoundRect(color, p(x, y), Size(6.5f * u, 6.5f * u), CornerRadius(2f * u), style = line)
+        }
+        // Three bars of different heights: the week.
+        TabIcon.REFLECTIONS -> {
+            drawLine(color, p(5f, 20f), p(5f, 13f), line.width, StrokeCap.Round)
+            drawLine(color, p(12f, 20f), p(12f, 4f), line.width, StrokeCap.Round)
+            drawLine(color, p(19f, 20f), p(19f, 9f), line.width, StrokeCap.Round)
+        }
+        // Three sliders.
+        TabIcon.SETTINGS -> {
+            for ((y, knob) in listOf(6f to 15f, 12f to 8f, 18f to 16f)) {
+                drawLine(color, p(3.5f, y), p(20.5f, y), line.width, StrokeCap.Round)
+                drawCircle(color, 2.6f * u, p(knob, y), style = line)
             }
         }
     }
