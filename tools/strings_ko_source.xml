@@ -180,6 +180,14 @@
 
     <!-- Settings -->
     <string name="settings_title">설정</string>
+    <string name="settings_theme">테마</string>
+    <string name="appearance_system">시스템</string>
+    <string name="theme_light">라이트</string>
+    <string name="theme_dark">다크</string>
+    <string name="settings_language">언어</string>
+    <string name="language_english">English</string>
+    <string name="language_korean">한국어</string>
+    <string name="settings_language_hint">\'시스템\'은 휴대폰 언어를 따라가요.</string>
     <string name="settings_tone">말투</string>
     <string name="tone_gentle">부드럽게</string>
     <string name="tone_direct">직설적으로</string>
@@ -285,7 +293,7 @@
     <string name="manual_privacy_t">개인정보</string>
     <string name="manual_privacy">GoalGate는 계정도 인터넷 연결도 사용하지 않아요. 목표, 답, 돌아보기 기록은 이 휴대폰에만 남아요. 앱을 삭제하면 모두 삭제돼요.</string>
     <string name="manual_language_t">언어</string>
-    <string name="manual_language">GoalGate는 휴대폰 언어에 맞춰 한국어 또는 영어로 표시돼요. Android 13 이상에서는 설정 &gt; 애플리케이션 &gt; GoalGate &gt; 언어에서 GoalGate만 다른 언어로 바꿀 수 있어요.</string>
+    <string name="manual_language">GoalGate는 영어와 한국어로 표시돼요. 설정 &gt; 언어에서 GoalGate만 쓸 언어를 고르거나, \'시스템\'을 골라 휴대폰 언어를 따라갈 수 있어요. 설정 &gt; 테마도 라이트와 다크에 대해 똑같이 작동해요.</string>
 
     <!-- Permissions -->
     <string name="perm_allow">허용</string>

@@ -1,6 +1,7 @@
 package com.goalgate.app
 
 import android.app.Application
+import com.goalgate.app.data.AppAppearance
 import com.goalgate.app.data.AppDatabase
 import com.goalgate.app.data.Settings
 import com.goalgate.app.detection.GateController
@@ -15,6 +16,7 @@ class GoalGateApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        AppAppearance.theme = settings.themeMode
         // Load the cooldowns and time-check clocks saved before the last restart.
         GateController.init(this)
     }

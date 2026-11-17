@@ -2,7 +2,6 @@ package com.goalgate.app.ui
 
 import android.app.Activity
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +23,7 @@ import com.goalgate.app.ui.theme.HeroAccent
 import com.goalgate.app.ui.theme.HeroColors
 import com.goalgate.app.ui.theme.LocalAccent
 import com.goalgate.app.ui.theme.RidgeFar
+import com.goalgate.app.ui.theme.isDarkTheme
 import com.goalgate.app.ui.theme.RidgeMid
 import com.goalgate.app.ui.theme.RidgeNear
 import com.goalgate.app.ui.theme.SkyNight
@@ -136,7 +136,7 @@ private fun ridge(size: Size, top: Float, height: Float, waves: Float, shift: Fl
 @Composable
 private fun LightStatusBarIcons() {
     val view = LocalView.current
-    val darkTheme = isSystemInDarkTheme()
+    val darkTheme = isDarkTheme()
     DisposableEffect(Unit) {
         val window = (view.context as? Activity)?.window
         val bars = window?.let { WindowCompat.getInsetsController(it, view) }

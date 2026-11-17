@@ -155,8 +155,13 @@ migration and a test like it.
 
 ## Languages
 
-The app follows the phone's language (Korean or English); on Android 13+ a
-per-app language can be chosen in system settings. Korean is generated from
+Settings > Language: System (follow the phone), English or 한국어. Settings >
+Theme: System, Light or Dark. Both apply straight away. The theme is live
+Compose state (`AppAppearance`); the language is applied when a screen is
+created (`wrapWithLanguage`, in each Activity's `attachBaseContext`), so
+the screen restarts once when it changes. This works the same on every
+Android version from 8.0 (it does not depend on Android 13's per-app
+language, which still works when Language is System). Korean is generated from
 `tools/strings_ko_source.xml`, which glues each Korean word with invisible
 word joiners so lines only wrap between words. Goals are shown exactly as
 the user typed them, in any language.

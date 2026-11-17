@@ -1,6 +1,14 @@
 package com.goalgate.app.ui.theme
 
+import android.app.Activity
+import android.graphics.drawable.ColorDrawable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.goalgate.app.data.AppAppearance
+import com.goalgate.app.data.isDark
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -211,10 +219,29 @@ private val KoreanTypography = AppTypography.copy(
     labelSmall = AppTypography.labelSmall.copy(fontSize = 15.sp, lineHeight = 23.sp),
 )
 
+/**
+ * Is the app dark? Follows the choice in Settings (light, dark, or the phone).
+ * Use this instead of isSystemInDarkTheme() anywhere the look depends on it.
+ */
+@Composable
+fun isDarkTheme(): Boolean = isDark(AppAppearance.theme, isSystemInDarkTheme())
+
 /** Wrap any screen in this to give it GoalGate's colours, fonts and shapes. */
 @Composable
 fun GoalGateTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+    val dark = isDarkTheme()
+    // The system bars (clock, battery, navigation) follow the app, not only the phone.
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            val bars = WindowCompat.getInsetsController(window, view)
+            bars.isAppearanceLightStatusBars = !dark
+            bars.isAppearanceLightNavigationBars = !dark
+            // The window behind the first frame matches too, so nothing flashes on start.
+            window.setBackgroundDrawable(ColorDrawable((if (dark) DarkColors else LightColors).background.toArgb()))
+        }
+    }
     // The app's language follows the phone (or the per-app language in Android settings).
     val korean = LocalConfiguration.current.locales[0].language == "ko"
     CompositionLocalProvider(LocalAccent provides if (dark) DarkAccent else LightAccent) {

@@ -33,6 +33,19 @@ class Settings(context: Context) {
         get() = Engine.valueOf(prefs.getString("engine", Engine.USAGE.name)!!)
         set(value) = prefs.edit().putString("engine", value.name).apply()
 
+    /** Light, dark, or follow the phone. Changing it in Settings repaints at once. */
+    var themeMode: ThemeMode
+        get() = themeModeOf(prefs.getString("themeMode", null))
+        set(value) {
+            prefs.edit().putString("themeMode", value.name).apply()
+            AppAppearance.theme = value
+        }
+
+    /** English, Korean, or follow the phone (see [wrapWithLanguage], which reads this key). */
+    var language: LanguageChoice
+        get() = languageChoiceOf(prefs.getString("language", null))
+        set(value) = prefs.edit().putString("language", value.name).apply()
+
     var tone: Tone
         get() = Tone.entries.firstOrNull { it.name == prefs.getString("tone", null) } ?: Tone.GENTLE
         set(value) = prefs.edit().putString("tone", value.name).apply()

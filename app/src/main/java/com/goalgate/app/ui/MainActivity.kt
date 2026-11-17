@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goalgate.app.R
+import com.goalgate.app.data.wrapWithLanguage
 import com.goalgate.app.GoalGateApp
 import com.goalgate.app.detection.Engines
 import com.goalgate.app.detection.Permissions
@@ -62,6 +63,11 @@ class MainActivity : ComponentActivity() {
 
     /** Set when the widget's "Check in" asks for the Goals tab; AppRoot clears it once used. */
     private var openGoals by mutableStateOf(false)
+
+    /** The language chosen in Settings applies to this screen (see wrapWithLanguage). */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(wrapWithLanguage(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goalgate.app.GoalGateApp
 import com.goalgate.app.R
+import com.goalgate.app.data.wrapWithLanguage
 import com.goalgate.app.data.Answer
 import com.goalgate.app.data.Engine
 import com.goalgate.app.data.Goal
@@ -150,6 +151,11 @@ class PauseActivity : ComponentActivity() {
     // Restored after a rotation, applied once the goals have loaded.
     private var restoredGoalId: Long? = null
     private var restoredLineId: String? = null
+
+    /** The language chosen in Settings applies to this screen (see wrapWithLanguage). */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(wrapWithLanguage(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

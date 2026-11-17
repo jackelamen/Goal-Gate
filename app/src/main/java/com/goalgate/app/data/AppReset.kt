@@ -28,6 +28,7 @@ object AppReset {
             }
             GateController.forgetEverything()
             Handler(Looper.getMainLooper()).post {
+                AppAppearance.theme = ThemeMode.SYSTEM // the saved choice was just cleared
                 Engines.apply(app)           // stops detection until setup is finished again
                 GoalGateWidget.refresh(app)  // the widget shows "write a goal" again
                 onDone()

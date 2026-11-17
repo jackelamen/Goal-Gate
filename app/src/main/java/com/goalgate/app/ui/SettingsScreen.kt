@@ -1,5 +1,9 @@
 package com.goalgate.app.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -48,9 +52,18 @@ import com.goalgate.app.R
 import com.goalgate.app.GoalGateApp
 import com.goalgate.app.data.AppReset
 import com.goalgate.app.data.Engine
+import com.goalgate.app.data.LanguageChoice
+import com.goalgate.app.data.ThemeMode
 import com.goalgate.app.data.Tone
 import com.goalgate.app.detection.Engines
 import com.goalgate.app.ui.theme.LocalAccent
+
+/** The Activity behind a Compose context, or null. */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 /** How many taps on the version number open the hidden debug screen. */
 private const val TAPS_TO_OPEN_DEBUG = 7
@@ -69,6 +82,8 @@ fun SettingsScreen(
     // Each value is kept twice: in Compose state (so the screen redraws)
     // and in Settings (so it is saved). The helpers below update both.
     var tone by remember { mutableStateOf(settings.tone) }
+    var themeMode by remember { mutableStateOf(settings.themeMode) }
+    var language by remember { mutableStateOf(settings.language) }
     var cooldown by remember { mutableIntStateOf(settings.cooldownMinutes) }
     var timeCheck by remember { mutableIntStateOf(settings.sessionLimitMinutes) }
     var korean by remember { mutableStateOf(settings.koreanExplanations) }
@@ -86,6 +101,55 @@ fun SettingsScreen(
             stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onBackground,
+        )
+
+        // --- Appearance: theme and language ---
+        Spacer(Modifier.height(32.dp))
+        SectionLabel(stringResource(R.string.settings_theme))
+        Spacer(Modifier.height(12.dp))
+        ChoiceRow(
+            options = ThemeMode.entries,
+            selected = themeMode,
+            label = {
+                stringResource(
+                    when (it) {
+                        ThemeMode.SYSTEM -> R.string.appearance_system
+                        ThemeMode.LIGHT -> R.string.theme_light
+                        ThemeMode.DARK -> R.string.theme_dark
+                    }
+                )
+            },
+            onSelect = { themeMode = it; settings.themeMode = it }, // repaints at once
+        )
+
+        Spacer(Modifier.height(32.dp))
+        SectionLabel(stringResource(R.string.settings_language))
+        Spacer(Modifier.height(12.dp))
+        ChoiceRow(
+            options = LanguageChoice.entries,
+            selected = language,
+            label = {
+                when (it) {
+                    LanguageChoice.SYSTEM -> stringResource(R.string.appearance_system)
+                    // Each language is always written in itself, so it can be found from any language.
+                    LanguageChoice.ENGLISH -> stringResource(R.string.language_english)
+                    LanguageChoice.KOREAN -> stringResource(R.string.language_korean)
+                }
+            },
+            onSelect = {
+                if (it != language) {
+                    language = it
+                    settings.language = it
+                    // Screens read the language when they are created, so this one starts again.
+                    context.findActivity()?.recreate()
+                }
+            },
+        )
+        Text(
+            stringResource(R.string.settings_language_hint),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 10.dp),
         )
 
         // --- Tone of the pause ---
@@ -229,7 +293,8 @@ fun SettingsScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         confirmReset = false
-                        AppReset.resetEverything(context, onDone = onReset)
+                        // The saved language is cleared too, so this screen starts again in the phone's language.
+                        AppReset.resetEverything(context, onDone = { onReset(); context.findActivity()?.recreate() })
                     }) {
                         Text(stringResource(R.string.reset_confirm), color = MaterialTheme.colorScheme.error)
                     }
