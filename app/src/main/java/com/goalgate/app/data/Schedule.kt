@@ -99,6 +99,31 @@ fun goalsForNow(goals: List<Goal>, workTime: Boolean): List<Goal> =
 val DOWNTIME_LENGTHS = listOf(15, 30, 60)
 
 // ---------------------------------------------------------------------------
+// Breaks: a short rest that is always available, but limited
+// ---------------------------------------------------------------------------
+
+/**
+ * Downtime and breaks work the same way once chosen (GoalGate leaves every
+ * chosen app alone for a while), but they are offered differently:
+ *  - DOWNTIME only during the user's scheduled downtime (Settings).
+ *  - BREAK at any other time, up to [MAX_BREAKS_PER_DAY] a day.
+ */
+enum class RestKind { DOWNTIME, BREAK }
+
+/** At most this many breaks a day. When they are used up, no more until the next day. */
+const val MAX_BREAKS_PER_DAY = 3
+
+/** The lengths offered for a break, in minutes. The longest is the most a break can be. */
+val BREAK_LENGTHS = listOf(10, 20, 30)
+
+/** How many breaks are left today, given how many were already started today. */
+fun breaksLeft(usedToday: Int): Int = (MAX_BREAKS_PER_DAY - usedToday).coerceIn(0, MAX_BREAKS_PER_DAY)
+
+/** Midnight at the start of today in [zone], in ms since 1970: where "today's breaks" start counting. */
+fun startOfDayMillis(now: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): Long =
+    java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
+
+// ---------------------------------------------------------------------------
 // Public holidays (bundled; nothing is downloaded)
 // ---------------------------------------------------------------------------
 

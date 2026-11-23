@@ -144,7 +144,14 @@ internal fun ReflectionsContent(week: Week, goals: List<Goal>, nextSteps: Map<Lo
         // Downtime is counted on its own: it is rest the user chose, not an answer.
         if (week.downtimes > 0) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            DowntimeRow(week.downtimes, week.downtimeMinutes)
+            DowntimeRow(
+                stringResource(R.string.reflections_downtime), week.downtimes,
+                stringResource(R.string.reflections_downtime_minutes, week.downtimeMinutes / 60, week.downtimeMinutes % 60),
+            )
+        }
+        if (week.breaks > 0) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            DowntimeRow(stringResource(R.string.reflections_breaks), week.breaks, stringResource(R.string.reflections_break_minutes, week.breakMinutes))
         }
 
         // --- Goals this week ---
@@ -275,17 +282,17 @@ private fun GoalWeekRow(count: GoalCount, goals: List<Goal>, nextStep: String?, 
     }
 }
 
-/** "Downtime: 3 times, 1 h 45 min chosen". */
+/** "Downtime you chose: 3, 1 h 45 min in all" (also used for breaks). */
 @Composable
-private fun DowntimeRow(times: Int, minutes: Int) {
+private fun DowntimeRow(label: String, times: Int, detail: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.reflections_downtime), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
             Text(
-                stringResource(R.string.reflections_downtime_minutes, minutes / 60, minutes % 60),
+                detail,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

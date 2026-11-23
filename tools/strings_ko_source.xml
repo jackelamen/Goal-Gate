@@ -88,6 +88,15 @@
     <!-- Downtime and next steps on the pause -->
     <string name="pause_downtime">지금은 쉬는 시간이에요</string>
     <string name="pause_downtime_hours">쉬는 시간대</string>
+    <string name="pause_break">짧은 휴식 · 오늘 %1$d번 남음</string>
+    <string name="pause_break_none">오늘은 짧은 휴식을 다 썼어요 · 내일 다시</string>
+    <string name="pause_break_label">짧은 휴식</string>
+    <string name="break_how_long">얼마나 쉬어 갈까요?</string>
+    <string name="break_note">%1$d분 동안 선택한 모든 앱에서 GoalGate가 조용히 있을게요. 이번 휴식 뒤에 오늘 남는 휴식은 %2$d번이에요.</string>
+    <string name="break_end_header">짧은 휴식 · %1$s</string>
+    <plurals name="break_end_title">
+        <item quantity="other">짧은 휴식 %1$d분이 끝났어요.</item>
+    </plurals>
     <string name="pause_hint_downtime">얼마나 쉴지 고른 다음 어디로 갈지 정하세요.</string>
     <string name="downtime_how_long">얼마나 쉴까요?</string>
     <string name="downtime_note">%1$d분 동안 선택한 모든 앱에서 GoalGate가 조용히 있을게요.</string>
@@ -167,6 +176,8 @@
     <string name="reflections_continues">계속 연 횟수</string>
     <string name="reflections_downtime">고른 쉬는 시간</string>
     <string name="reflections_downtime_minutes">모두 %1$d시간 %2$d분</string>
+    <string name="reflections_breaks">가진 짧은 휴식</string>
+    <string name="reflections_break_minutes">모두 %1$d분</string>
     <string name="reflections_by_goal">고른 목표</string>
     <string name="reflections_no_goal">지금은 없음</string>
     <string name="reflections_removed_goal">삭제한 목표</string>
@@ -198,7 +209,7 @@
     <string name="settings_workday">근무 시간</string>
     <string name="settings_workday_hint">\'근무 시간\' 목표는 이 요일, 이 시간에만 보여요. 아래에서 국가를 고르면 공휴일은 쉬는 날로 쳐요.</string>
     <string name="settings_downtime">쉬는 시간</string>
-    <string name="settings_downtime_hint">이 시간에는 잠깐 멈춤 화면에서 \'지금은 쉬는 시간이에요\'가 맨 위에 나와요.</string>
+    <string name="settings_downtime_hint">\'지금은 쉬는 시간이에요\'는 이 시간대와, 켜 둔 경우 주말·공휴일에만 나와요. 그 밖의 시간에는 하루 3번, 최대 30분의 짧은 휴식을 쓸 수 있어요.</string>
     <string name="settings_downtime_add">쉬는 시간대 추가</string>
     <string name="settings_downtime_weekends">주말</string>
     <string name="settings_downtime_holidays">공휴일</string>
@@ -245,7 +256,7 @@
     <string name="privacy_summary_t">요약</string>
     <string name="privacy_summary">GoalGate는 개인정보를 수집하거나 외부로 전송하거나 제3자에게 제공하지 않습니다. 기록되는 모든 정보는 사용자의 휴대폰에만 저장됩니다.</string>
     <string name="privacy_stored_t">휴대폰에 저장되는 정보</string>
-    <string name="privacy_stored">입력한 그대로의 목표, 선택 입력한 이유와 단계, 목표의 적용 시간, 단계를 완료로 표시하거나 목표를 달성으로 표시한 날짜, 사용자가 선택한 앱, 그리고 잠깐 멈춤 화면이 표시될 때마다의 앱 이름·시간·화면이 표시되기까지 걸린 시간·고른 목표(또는 없음)·답(네, 글쎄요, 아니요, 또는 쉬는 시간과 그 길이)·표시된 문장·\'닫기\' 또는 \'열기\' 선택, 근무 시간과 쉬는 시간대를 포함한 설정이 저장됩니다. 이 정보는 다른 앱이 읽을 수 없는 GoalGate 전용 저장 공간에 보관됩니다.</string>
+    <string name="privacy_stored">입력한 그대로의 목표, 선택 입력한 이유와 단계, 목표의 적용 시간, 단계를 완료로 표시하거나 목표를 달성으로 표시한 날짜, 사용자가 선택한 앱, 그리고 잠깐 멈춤 화면이 표시될 때마다의 앱 이름·시간·화면이 표시되기까지 걸린 시간·고른 목표(또는 없음)·답(네, 글쎄요, 아니요, 또는 쉬는 시간이나 짧은 휴식과 그 길이)·표시된 문장·\'닫기\' 또는 \'열기\' 선택, 근무 시간과 쉬는 시간대를 포함한 설정이 저장됩니다. 이 정보는 다른 앱이 읽을 수 없는 GoalGate 전용 저장 공간에 보관됩니다.</string>
     <string name="privacy_read_t">GoalGate가 확인하는 정보</string>
     <string name="privacy_read">선택한 앱이 열리는 순간을 알기 위해 Android의 사용 정보 접근 또는 접근성 서비스(설정에서 선택)를 통해 화면 맨 앞에 있는 앱의 이름만 확인합니다. 화면 내용, 다른 앱에서 입력하는 내용, 메시지, 비밀번호는 읽지 않습니다.</string>
     <string name="privacy_sent_t">외부로 전송되는 정보</string>
@@ -273,7 +284,9 @@
     <string name="manual_answers_t">네, 글쎄요, 아니요</string>
     <string name="manual_answers">틀린 답은 없고, \'아니요\'를 골라도 앱을 막지 않아요. 답하면 그 답에 맞는 짧은 문장이 나와요. 설정 &gt; 말투에서 \'부드럽게\' 또는 \'직설적으로\'를 고를 수 있어요.</string>
     <string name="manual_downtime_t">쉬는 시간</string>
-    <string name="manual_downtime">잠깐 멈춤 화면에서 \'지금은 쉬는 시간이에요\'를 누르고 15분, 30분, 60분 중 하나를 고르세요. \'열기\'를 누르면 기다림 없이 앱이 열리고, 그 시간 동안 선택한 모든 앱에서 GoalGate가 조용히 있어요. 시간이 끝났을 때 아직 앱을 쓰고 있으면 계속할지 한 번 물어요. 설정 &gt; 쉬는 시간에서 매일 쉬는 시간대, 주말, 공휴일을 정할 수 있고, 그때는 \'지금은 쉬는 시간이에요\'가 맨 위에 나와요.</string>
+    <string name="manual_downtime">\'지금은 쉬는 시간이에요\'는 설정 &gt; 쉬는 시간에서 정한 시간대(그리고 켜 둔 경우 주말과 공휴일)에만 잠깐 멈춤 화면에 나와요. 누른 다음 15분, 30분, 60분 중 하나를 고르세요. \'열기\'를 누르면 기다림 없이 앱이 열리고, 그 시간 동안 선택한 모든 앱에서 GoalGate가 조용히 있어요. 시간이 끝났을 때 아직 앱을 쓰고 있으면 계속할지 한 번 물어요. 그 시간대가 아니면 이 선택지는 보이지 않아요.</string>
+    <string name="manual_breaks_t">짧은 휴식</string>
+    <string name="manual_breaks">쉬는 시간이 아닌 때에는 잠깐 멈춤 화면에 \'짧은 휴식\'이 나와요. 하루에 3번, 한 번에 10분, 20분, 30분 중 하나를 쓸 수 있어요. 쉬는 시간과 똑같이 작동해요. \'열기\'를 누르면 기다림 없이 앱이 열리고, 휴식이 끝날 때까지 선택한 모든 앱에서 GoalGate가 조용히 있다가 끝나면 계속할지 한 번 물어요. 휴식은 \'열기\'를 눌러 시작했을 때만 세요. 고른 뒤 \'닫기\'를 누르면 쓴 것으로 치지 않아요. 3번을 다 쓰면 그 항목이 회색으로 바뀌고 다음 날까지 더 쓸 수 없어요.</string>
     <string name="manual_close_t">닫기와 열기</string>
     <string name="manual_close">\'닫기\'는 홈 화면으로 이동해요. \'열기\'는 앱을 열어요. 1시간 안에 같은 앱을 3번 이상 열면 \'열기\' 버튼이 5초 뒤에 활성화되고, 5번째부터는 10초 뒤에 활성화돼요. \'닫기\'는 언제나 바로 누를 수 있어요.</string>
     <string name="manual_cooldown_t">재알림 대기 시간</string>

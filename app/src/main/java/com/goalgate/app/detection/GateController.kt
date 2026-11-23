@@ -49,6 +49,7 @@ object GateController {
     private const val KEY_CLOCKS = "clocks"
     private const val KEY_DOWNTIME_UNTIL = "downtimeUntil"
     private const val KEY_DOWNTIME_MINUTES = "downtimeMinutes"
+    private const val KEY_REST_IS_BREAK = "restIsBreak"
 
     /** The packages the user picked. Kept up to date by [watchSelectedApps]. */
     @Volatile
@@ -90,6 +91,9 @@ object GateController {
     /** The length the user chose, for the message when it ends ("Your 30 minutes are up"). */
     private var downtimeMinutes = 0
 
+    /** True when the rest in progress is a break, false for downtime (the end message differs). */
+    private var restIsBreak = false
+
     private val downtimeOver = Runnable { onDowntimeOver() }
 
     /**
@@ -124,6 +128,7 @@ object GateController {
         restoredRunning = timer.runningPackage()
         downtimeUntil = prefs.getLong(KEY_DOWNTIME_UNTIL, 0L)
         downtimeMinutes = prefs.getInt(KEY_DOWNTIME_MINUTES, 0)
+        restIsBreak = prefs.getBoolean(KEY_REST_IS_BREAK, false)
         // Still in downtime after a restart: schedule its end again.
         if (downtimeUntil > now) handler.postDelayed(downtimeOver, downtimeUntil - now) else downtimeUntil = 0L
     }
@@ -141,6 +146,7 @@ object GateController {
             .putString(KEY_CLOCKS, timer.toJson())
             .putLong(KEY_DOWNTIME_UNTIL, downtimeUntil)
             .putInt(KEY_DOWNTIME_MINUTES, downtimeMinutes)
+            .putBoolean(KEY_REST_IS_BREAK, restIsBreak)
             .apply()
     }
 
@@ -238,15 +244,16 @@ object GateController {
     }
 
     /**
-     * Called when the user chooses "It's my downtime" and goes on: for
+     * Called when the user chooses "It's my downtime" or "Take a break" and goes on: for
      * [minutes], no chosen app is paused and no time check runs. When the time
      * is up and the user is still in a chosen app, one gentle check appears.
      */
     @Synchronized
-    fun startDowntime(packageName: String, minutes: Int) {
+    fun startDowntime(packageName: String, minutes: Int, isBreak: Boolean = false) {
         val now = System.currentTimeMillis()
         downtimeUntil = now + minutes * 60_000L
         downtimeMinutes = minutes
+        restIsBreak = isBreak
         restoredRunning = null
         pauseClock(now)
         timer.reset(packageName)
@@ -263,6 +270,7 @@ object GateController {
     private fun onDowntimeOver() {
         val context = appContext ?: return
         val minutes = downtimeMinutes
+        val wasBreak = restIsBreak
         downtimeUntil = 0L
         saveState()
         val packageName = lastForeground ?: return
@@ -273,7 +281,7 @@ object GateController {
             context,
             PauseActivity.createIntent(
                 context, packageName, System.currentTimeMillis(), lastEngine,
-                reason = TriggerLog.REASON_DOWNTIME_END,
+                reason = if (wasBreak) TriggerLog.REASON_BREAK_END else TriggerLog.REASON_DOWNTIME_END,
                 minutesUsed = minutes,
             ),
         )

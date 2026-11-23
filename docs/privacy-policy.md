@@ -4,7 +4,7 @@ Effective: 16 November 2026
 
 **Summary.** GoalGate does not collect, upload or share any personal information. Everything it records stays on your phone.
 
-**What GoalGate stores on your phone.** Your goals, their optional "why" lines and steps, exactly as you typed them, when each goal applies, and when you checked off a step or marked a goal achieved; the apps you choose; and, each time the pause appears: the app's name, the time, how long the pause took to appear, which goal you picked (or none), your answer (Yes, Maybe, No, or downtime with its length), which reflection line was shown, and whether you chose Close or Continue; and your settings, including your workday and downtime hours. This is kept in GoalGate's private storage, which other apps cannot read.
+**What GoalGate stores on your phone.** Your goals, their optional "why" lines and steps, exactly as you typed them, when each goal applies, and when you checked off a step or marked a goal achieved; the apps you choose; and, each time the pause appears: the app's name, the time, how long the pause took to appear, which goal you picked (or none), your answer (Yes, Maybe, No, or downtime or a break with its length), which reflection line was shown, and whether you chose Close or Continue; and your settings, including your workday and downtime hours. This is kept in GoalGate's private storage, which other apps cannot read.
 
 **What GoalGate reads.** To know when you open a chosen app, GoalGate reads the name of the app in front, using Android's usage access or accessibility service (you choose which in Settings). It never reads what is on your screen, what you type in other apps, your messages or your passwords.
 
@@ -26,7 +26,7 @@ Effective: 16 November 2026
 
 **요약.** GoalGate는 개인정보를 수집하거나 외부로 전송하거나 제3자에게 제공하지 않습니다. 기록되는 모든 정보는 사용자의 휴대폰에만 저장됩니다.
 
-**휴대폰에 저장되는 정보.** 입력한 그대로의 목표, 선택 입력한 이유와 단계, 목표의 적용 시간, 단계를 완료로 표시하거나 목표를 달성으로 표시한 날짜, 사용자가 선택한 앱, 그리고 잠깐 멈춤 화면이 표시될 때마다의 앱 이름·시간·화면이 표시되기까지 걸린 시간·고른 목표(또는 없음)·답(네, 글쎄요, 아니요, 또는 쉬는 시간과 그 길이)·표시된 문장·'닫기' 또는 '열기' 선택, 근무 시간과 쉬는 시간대를 포함한 설정이 저장됩니다. 이 정보는 다른 앱이 읽을 수 없는 GoalGate 전용 저장 공간에 보관됩니다.
+**휴대폰에 저장되는 정보.** 입력한 그대로의 목표, 선택 입력한 이유와 단계, 목표의 적용 시간, 단계를 완료로 표시하거나 목표를 달성으로 표시한 날짜, 사용자가 선택한 앱, 그리고 잠깐 멈춤 화면이 표시될 때마다의 앱 이름·시간·화면이 표시되기까지 걸린 시간·고른 목표(또는 없음)·답(네, 글쎄요, 아니요, 또는 쉬는 시간이나 짧은 휴식과 그 길이)·표시된 문장·'닫기' 또는 '열기' 선택, 근무 시간과 쉬는 시간대를 포함한 설정이 저장됩니다. 이 정보는 다른 앱이 읽을 수 없는 GoalGate 전용 저장 공간에 보관됩니다.
 
 **GoalGate가 확인하는 정보.** 선택한 앱이 열리는 순간을 알기 위해 Android의 사용 정보 접근 또는 접근성 서비스(설정에서 선택)를 통해 화면 맨 앞에 있는 앱의 이름만 확인합니다. 화면 내용, 다른 앱에서 입력하는 내용, 메시지, 비밀번호는 읽지 않습니다.
 

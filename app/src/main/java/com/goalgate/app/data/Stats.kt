@@ -52,6 +52,9 @@ data class Week(
     /** Times the user chose "It's my downtime" and went on, and the minutes they chose in total. */
     val downtimes: Int = 0,
     val downtimeMinutes: Int = 0,
+    /** Breaks the user started this week, and the minutes they chose in total. */
+    val breaks: Int = 0,
+    val breakMinutes: Int = 0,
 ) {
     val answered get() = yes + maybe + no
 }
@@ -80,8 +83,14 @@ fun computeWeek(logs: List<TriggerLog>, now: Long, zone: ZoneId = ZoneId.systemD
         sentence = weekSentence(answered, zone),
         downtimes = startedDowntimes(week).size,
         downtimeMinutes = startedDowntimes(week).sumOf { it.downtimeMinutes ?: 0 },
+        breaks = startedBreaks(week).size,
+        breakMinutes = startedBreaks(week).sumOf { it.downtimeMinutes ?: 0 },
     )
 }
+
+/** Pauses where the user chose "Take a break" and then continued (not closed). */
+fun startedBreaks(logs: List<TriggerLog>): List<TriggerLog> =
+    logs.filter { it.answer == TriggerLog.ANSWER_BREAK && it.action == TriggerLog.ACTION_CONTINUE }
 
 /** Pauses where the user chose "It's my downtime" and then continued (not closed). */
 fun startedDowntimes(logs: List<TriggerLog>): List<TriggerLog> =

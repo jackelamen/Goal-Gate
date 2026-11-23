@@ -100,6 +100,18 @@
     <!-- Downtime and next steps on the pause -->
     <string name="pause_downtime">It\'s my downtime</string>
     <string name="pause_downtime_hours">Your downtime hours</string>
+    <!-- Outside downtime hours. %1$d = breaks left today (at most 3 a day). -->
+    <string name="pause_break">Take a break · %1$d left today</string>
+    <string name="pause_break_none">No breaks left today · back tomorrow</string>
+    <string name="pause_break_label">Take a break</string>
+    <string name="break_how_long">How long is your break?</string>
+    <string name="break_note">GoalGate will stay quiet in all your chosen apps for %1$d min. Breaks left today after this one: %2$d.</string>
+    <!-- The check when a chosen break is up. %1$s = app name. -->
+    <string name="break_end_header">Break · %1$s</string>
+    <plurals name="break_end_title">
+        <item quantity="one">Your 1-minute break is over.</item>
+        <item quantity="other">Your %1$d-minute break is over.</item>
+    </plurals>
     <string name="pause_hint_downtime">Choose how long, then where to go.</string>
     <string name="downtime_how_long">How long is this downtime?</string>
     <string name="downtime_note">GoalGate will stay quiet in all your chosen apps for %1$d min.</string>
@@ -188,6 +200,8 @@
     <string name="reflections_continues">Times you continued</string>
     <string name="reflections_downtime">Downtime you chose</string>
     <string name="reflections_downtime_minutes">%1$d h %2$d min in all</string>
+    <string name="reflections_breaks">Breaks you took</string>
+    <string name="reflections_break_minutes">%1$d min in all</string>
     <string name="reflections_by_goal">Goals you chose</string>
     <string name="reflections_no_goal">None right now</string>
     <string name="reflections_removed_goal">A deleted goal</string>
@@ -225,7 +239,7 @@
     <string name="settings_workday">Workday</string>
     <string name="settings_workday_hint">Goals marked Workday only appear on these days, at these hours. Public holidays count as days off when a country is set below.</string>
     <string name="settings_downtime">Downtime</string>
-    <string name="settings_downtime_hint">At these times, It\'s my downtime comes first on the pause.</string>
+    <string name="settings_downtime_hint">It\'s my downtime appears on the pause only at these times, and on weekends and public holidays if switched on. Outside them there are breaks instead: up to 3 a day, 30 minutes at most.</string>
     <string name="settings_downtime_add">Add downtime hours</string>
     <string name="settings_downtime_weekends">Weekends</string>
     <string name="settings_downtime_holidays">Public holidays</string>
@@ -272,7 +286,7 @@
     <string name="privacy_summary_t">Summary</string>
     <string name="privacy_summary">GoalGate does not collect, upload or share any personal information. Everything it records stays on your phone.</string>
     <string name="privacy_stored_t">What GoalGate stores on your phone</string>
-    <string name="privacy_stored">Your goals, their optional \"why\" lines and steps, exactly as you typed them, when each goal applies, and when you checked off a step or marked a goal achieved; the apps you choose; and, each time the pause appears: the app\'s name, the time, how long the pause took to appear, which goal you picked (or none), your answer (Yes, Maybe, No, or downtime with its length), which reflection line was shown, and whether you chose Close or Continue; and your settings, including your workday and downtime hours. This is kept in GoalGate\'s private storage, which other apps cannot read.</string>
+    <string name="privacy_stored">Your goals, their optional \"why\" lines and steps, exactly as you typed them, when each goal applies, and when you checked off a step or marked a goal achieved; the apps you choose; and, each time the pause appears: the app\'s name, the time, how long the pause took to appear, which goal you picked (or none), your answer (Yes, Maybe, No, or downtime or a break with its length), which reflection line was shown, and whether you chose Close or Continue; and your settings, including your workday and downtime hours. This is kept in GoalGate\'s private storage, which other apps cannot read.</string>
     <string name="privacy_read_t">What GoalGate reads</string>
     <string name="privacy_read">To know when you open a chosen app, GoalGate reads the name of the app in front, using Android\'s usage access or accessibility service (you choose which in Settings). It never reads what is on your screen, what you type in other apps, your messages or your passwords.</string>
     <string name="privacy_sent_t">What leaves your phone</string>
@@ -300,7 +314,9 @@
     <string name="manual_answers_t">Yes, Maybe or No</string>
     <string name="manual_answers">There is no wrong answer, and No never blocks the app. After you answer, a short line appears that fits your answer. In Settings &gt; Tone you can choose how it speaks: Gentle or Direct. Settings &gt; Reflection lines can add a Korean version.</string>
     <string name="manual_downtime_t">Downtime</string>
-    <string name="manual_downtime">On the pause, tap It\'s my downtime, then choose 15, 30 or 60 minutes. Continue opens the app with no wait, and GoalGate leaves all your chosen apps alone for that time. If you are still in a chosen app when the time is up, one check asks whether to keep going. In Settings &gt; Downtime you can set daily downtime hours, weekends and public holidays; at those times, It\'s my downtime comes first.</string>
+    <string name="manual_downtime">It\'s my downtime appears on the pause only during the downtime you set in Settings &gt; Downtime: daily hours, and weekends and public holidays if you switch them on. Tap it, then choose 15, 30 or 60 minutes. Continue opens the app with no wait, and GoalGate leaves all your chosen apps alone for that time. If you are still in a chosen app when the time is up, one check asks whether to keep going. Outside those times the option is not shown.</string>
+    <string name="manual_breaks_t">Breaks</string>
+    <string name="manual_breaks">Outside your downtime, the pause offers Take a break instead. You get 3 breaks a day, each 10, 20 or 30 minutes. It works like downtime: Continue opens the app with no wait, and GoalGate stays quiet in all your chosen apps until the break is over, then asks once whether to keep going. A break counts once you continue with it; choosing one and then tapping Close does not use it. When all 3 are used, the row turns grey and no more breaks are offered until the next day.</string>
     <string name="manual_close_t">Close or Continue</string>
     <string name="manual_close">Close takes you to the home screen. Continue opens the app. If you open the same app 3 times within an hour, Continue waits 5 seconds (10 seconds from the 5th time). Close always works straight away.</string>
     <string name="manual_cooldown_t">Cooldown</string>

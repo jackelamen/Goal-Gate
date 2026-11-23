@@ -122,6 +122,14 @@ interface TriggerLogDao {
     @Query("SELECT questionId FROM trigger_logs WHERE questionId != '' ORDER BY openedAt DESC LIMIT :limit")
     fun recentLineIds(limit: Int): List<String>
 
+    /**
+     * When the user started a break ("Take a break" then Continue) since [since].
+     * A break only counts once the user goes on with it: choosing one and then
+     * tapping Close does not use it up.
+     */
+    @Query("SELECT openedAt FROM trigger_logs WHERE answer = 'BREAK' AND action = 'CONTINUE' AND openedAt >= :since")
+    fun breakTimesSince(since: Long): List<Long>
+
     @Query("DELETE FROM trigger_logs")
     suspend fun deleteAll()
 }

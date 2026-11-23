@@ -76,7 +76,11 @@ import com.goalgate.app.data.ReflectionBank
 import com.goalgate.app.data.ReflectionLine
 import com.goalgate.app.data.Tone
 import com.goalgate.app.data.TriggerLog
+import com.goalgate.app.data.BREAK_LENGTHS
 import com.goalgate.app.data.DOWNTIME_LENGTHS
+import com.goalgate.app.data.RestKind
+import com.goalgate.app.data.breaksLeft
+import com.goalgate.app.data.startOfDayMillis
 import com.goalgate.app.data.ScheduleNow
 import com.goalgate.app.data.goalsForNow
 import com.goalgate.app.data.nextSteps
@@ -100,13 +104,17 @@ enum class PauseStep { GOALS, QUESTION, CHOICE, DOWNTIME }
  *                fixed question: "Does opening [app] help this goal?" (Yes / Maybe / No).
  *   3. CHOICE    a short line that fits the answer, then Close or Continue.
  *
- * Or, on step 1, "It's my downtime":
- *   DOWNTIME     how long (15, 30 or 60 min), then Close or Continue with no
- *                wait. GoalGate then leaves every chosen app alone for that
+ * Or, on step 1, a rest, which comes in two kinds:
+ *   "It's my downtime"  only inside the user's scheduled downtime (Settings),
+ *                       15, 30 or 60 min.
+ *   "Take a break"      at any other time, 10, 20 or 30 min, at most 3 a day;
+ *                       when they are used up, none until the next day.
+ *   DOWNTIME     how long, then Close or Continue with no wait. GoalGate then leaves every chosen app alone for that
  *                time, and shows one gentle check when it is up (reason
- *                DOWNTIME_END: "Your 30 minutes of downtime are up").
+ *                DOWNTIME_END or BREAK_END).
  *
- * In scheduled downtime (Settings), "It's my downtime" is offered first.
+ * In scheduled downtime (Settings), "It's my downtime" is offered first and
+ * breaks are not offered (downtime is already rest).
  * Goals marked "Workday" only appear during the workday. Each goal shows its
  * next step, read-only: steps are checked off in the Goals tab, never here.
  *
@@ -141,6 +149,8 @@ class PauseActivity : ComponentActivity() {
     private var downtimeMinutes by mutableStateOf<Int?>(null)
     private var nextSteps by mutableStateOf<Map<Long, String>>(emptyMap())
     private var scheduledDowntime by mutableStateOf(false)
+    private var restKind by mutableStateOf(RestKind.DOWNTIME)
+    private var breaksLeft by mutableIntStateOf(0)
     private var tone = Tone.GENTLE
     private var koreanToo = false
 
@@ -173,6 +183,7 @@ class PauseActivity : ComponentActivity() {
                     // Why this screen appeared, shown small at the top.
                     header = when {
                         reason == TriggerLog.REASON_DOWNTIME_END -> stringResource(R.string.downtime_end_header, label)
+                        reason == TriggerLog.REASON_BREAK_END -> stringResource(R.string.break_end_header, label)
                         minutesUsed > 0 -> stringResource(R.string.question_header_time, minutesUsed, label)
                         opensThisHour >= 3 -> stringResource(R.string.question_header_repeat, label, opensThisHour)
                         else -> stringResource(R.string.question_header, label)
@@ -193,9 +204,12 @@ class PauseActivity : ComponentActivity() {
                     onContinue = ::onContinue,
                     nextSteps = nextSteps,
                     scheduledDowntime = scheduledDowntime,
+                    breaksLeft = breaksLeft,
+                    restKind = restKind,
                     downtimeMinutes = downtimeMinutes,
-                    downtimeEndMinutes = if (reason == TriggerLog.REASON_DOWNTIME_END) minutesUsed else null,
-                    onDowntime = ::onDowntimeChosen,
+                    downtimeEndMinutes = if (reason == TriggerLog.REASON_DOWNTIME_END || reason == TriggerLog.REASON_BREAK_END) minutesUsed else null,
+                    onDowntime = { onRestChosen(RestKind.DOWNTIME) },
+                    onBreak = { onRestChosen(RestKind.BREAK) },
                     onDowntimeLength = ::onDowntimeLength,
                 )
             }
@@ -226,6 +240,7 @@ class PauseActivity : ComponentActivity() {
         answer?.let { outState.putString(STATE_ANSWER, it.name) }
         line?.let { outState.putString(STATE_LINE, it.id) }
         downtimeMinutes?.let { outState.putInt(STATE_DOWNTIME, it) }
+        outState.putString(STATE_REST, restKind.name)
     }
 
     private fun restore(state: Bundle) {
@@ -234,6 +249,7 @@ class PauseActivity : ComponentActivity() {
         answer = Answer.entries.firstOrNull { it.name == state.getString(STATE_ANSWER) }
         restoredLineId = state.getString(STATE_LINE)
         downtimeMinutes = if (state.containsKey(STATE_DOWNTIME)) state.getInt(STATE_DOWNTIME) else null
+        restKind = RestKind.entries.firstOrNull { it.name == state.getString(STATE_REST) } ?: RestKind.DOWNTIME
     }
 
     private fun readIntent(intent: Intent) {
@@ -243,7 +259,10 @@ class PauseActivity : ComponentActivity() {
         reason = intent.getStringExtra(EXTRA_REASON) ?: TriggerLog.REASON_OPEN
         minutesUsed = intent.getIntExtra(EXTRA_MINUTES, 0)
         // The check at the end of a downtime has nothing to answer: Close and Continue show at once.
-        if (reason == TriggerLog.REASON_DOWNTIME_END) step = PauseStep.CHOICE
+        if (reason == TriggerLog.REASON_DOWNTIME_END || reason == TriggerLog.REASON_BREAK_END) {
+            step = PauseStep.CHOICE
+            restKind = if (reason == TriggerLog.REASON_BREAK_END) RestKind.BREAK else RestKind.DOWNTIME
+        }
     }
 
     /** Reads the goals, their next steps, today's schedule and the escalation count on the background thread. */
@@ -253,6 +272,8 @@ class PauseActivity : ComponentActivity() {
             // Only the goals that apply now: "Workday" goals stay out of the evening.
             val active = goalsForNow(app.database.goalDao().getAll(), schedule.workTime)
             val steps = nextSteps(app.database.goalStepDao().getAll()).mapValues { it.value.text }
+            // Breaks started since midnight; when all are used, none until tomorrow.
+            val breaksUsed = app.database.triggerLogDao().breakTimesSince(startOfDayMillis(System.currentTimeMillis())).size
             ReflectionBank.load(this) // warm the cache, so answering is instant
 
             // Escalation, only for "app opened" triggers (see opensThisHour).
@@ -270,6 +291,7 @@ class PauseActivity : ComponentActivity() {
                 goals = active
                 nextSteps = steps
                 scheduledDowntime = schedule.downtime
+                breaksLeft = breaksLeft(breaksUsed)
                 opensThisHour = opens
                 continueDelay = continueDelaySeconds(opens)
                 chosenGoal = restoredGoal
@@ -314,9 +336,13 @@ class PauseActivity : ComponentActivity() {
         step = PauseStep.QUESTION
     }
 
-    /** Step 1: "It's my downtime". Next, the user chooses how long. */
-    private fun onDowntimeChosen() {
+    /** Step 1: "It's my downtime" or "Take a break". Next, the user chooses how long. */
+    private fun onRestChosen(kind: RestKind) {
         if (step != PauseStep.GOALS) return
+        // Downtime only inside the scheduled hours; a break only while one is left today.
+        if (kind == RestKind.BREAK && breaksLeft <= 0) return
+        if (kind == RestKind.DOWNTIME && !scheduledDowntime) return
+        restKind = kind
         chosenGoal = null
         step = PauseStep.DOWNTIME
     }
@@ -327,7 +353,8 @@ class PauseActivity : ComponentActivity() {
         downtimeMinutes = minutes
         app.dbThread.execute {
             log?.let {
-                log = it.copy(correct = true, answer = TriggerLog.ANSWER_DOWNTIME, downtimeMinutes = minutes, goalId = null)
+                val answer = if (restKind == RestKind.BREAK) TriggerLog.ANSWER_BREAK else TriggerLog.ANSWER_DOWNTIME
+                log = it.copy(correct = true, answer = answer, downtimeMinutes = minutes, goalId = null)
                 app.database.triggerLogDao().update(log!!)
             }
         }
@@ -356,7 +383,7 @@ class PauseActivity : ComponentActivity() {
     private fun onContinue() {
         val downtime = downtimeMinutes
         if (step == PauseStep.DOWNTIME && downtime != null) {
-            GateController.startDowntime(targetPackage, downtime)
+            GateController.startDowntime(targetPackage, downtime, isBreak = restKind == RestKind.BREAK)
         } else {
             GateController.startCooldown(targetPackage, app.settings.cooldownMinutes)
         }
@@ -414,6 +441,7 @@ class PauseActivity : ComponentActivity() {
         private const val STATE_ANSWER = "answer"
         private const val STATE_LINE = "line"
         private const val STATE_DOWNTIME = "downtime"
+        private const val STATE_REST = "rest"
 
         /** Builds the Intent the detection engines use to open this screen. */
         fun createIntent(
@@ -461,8 +489,11 @@ internal fun PauseScreen(
     onContinue: () -> Unit,
     nextSteps: Map<Long, String> = emptyMap(),
     scheduledDowntime: Boolean = false,
+    breaksLeft: Int = 0,
+    restKind: RestKind = RestKind.DOWNTIME,
     downtimeMinutes: Int? = null,
     downtimeEndMinutes: Int? = null,
+    onBreak: () -> Unit = {},
     onDowntime: () -> Unit = {},
     onDowntimeLength: (Int) -> Unit = {},
 ) {
@@ -532,7 +563,7 @@ internal fun PauseScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 if (downtimeEndMinutes != null) {
-                    DowntimeEndPart(downtimeEndMinutes)
+                    DowntimeEndPart(downtimeEndMinutes, restKind)
                 } else if (goals != null) {
                     // 0 = goals, 1 = question and choice, 2 = downtime.
                     val part = when (step) {
@@ -550,8 +581,10 @@ internal fun PauseScreen(
                                 goals = goals,
                                 nextSteps = nextSteps,
                                 scheduledDowntime = scheduledDowntime,
+                                breaksLeft = breaksLeft,
                                 onGoal = onGoal,
                                 onDowntime = onDowntime,
+                                onBreak = onBreak,
                             )
                             1 -> QuestionPart(
                                 appLabel = appLabel,
@@ -565,6 +598,8 @@ internal fun PauseScreen(
                                 onChosenPosition = { burstOrigin = it },
                             )
                             else -> DowntimePart(
+                                kind = restKind,
+                                breaksLeft = breaksLeft,
                                 minutes = downtimeMinutes,
                                 onLength = onDowntimeLength,
                                 onChosenPosition = { burstOrigin = it },
@@ -649,8 +684,10 @@ private fun GoalsPart(
     goals: List<Goal>,
     nextSteps: Map<Long, String>,
     scheduledDowntime: Boolean,
+    breaksLeft: Int,
     onGoal: (Goal?) -> Unit,
     onDowntime: () -> Unit,
+    onBreak: () -> Unit,
 ) {
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered = true }
@@ -683,10 +720,17 @@ private fun GoalsPart(
                     modifier = Modifier.enterAnimation(entered, 2 + index),
                 )
             }
-            // "None right now" and "It's my downtime": quiet outlined rows, not cards, so the goals lead.
+            // "None right now" and the break: quiet outlined rows, not cards, so the goals lead.
             QuietRow(stringResource(R.string.pause_no_goal), onClick = { onGoal(null) }, modifier = Modifier.enterAnimation(entered, 2 + goals.size))
+            // Outside downtime hours: a break, while any are left today. When they are used up the
+            // row stays, dimmed, and says when they come back, so nobody wonders where it went.
             if (!scheduledDowntime) {
-                QuietRow(stringResource(R.string.pause_downtime), onClick = onDowntime, modifier = Modifier.enterAnimation(entered, 3 + goals.size))
+                QuietRow(
+                    if (breaksLeft > 0) stringResource(R.string.pause_break, breaksLeft) else stringResource(R.string.pause_break_none),
+                    onClick = onBreak,
+                    enabled = breaksLeft > 0,
+                    modifier = Modifier.enterAnimation(entered, 3 + goals.size),
+                )
             }
         }
     }
@@ -751,19 +795,20 @@ private fun GoalChoiceCard(goal: Goal, nextStep: String?, compact: Boolean, onCl
 }
 
 @Composable
-private fun QuietRow(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun QuietRow(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val shape = MaterialTheme.shapes.medium
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = shape,
         color = Color.White.copy(alpha = 0.06f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) 0.22f else 0.1f)),
         modifier = modifier.fillMaxWidth(),
     ) {
         Text(
             text,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (enabled) 1f else 0.5f),
             modifier = Modifier.heightIn(min = 52.dp).padding(horizontal = 20.dp, vertical = 16.dp),
         )
     }
@@ -920,25 +965,26 @@ private fun QuestionPart(
  * ring as an answer), and a sentence says what GoalGate will do.
  */
 @Composable
-private fun DowntimePart(minutes: Int?, onLength: (Int) -> Unit, onChosenPosition: (Offset) -> Unit) {
+private fun DowntimePart(kind: RestKind, breaksLeft: Int, minutes: Int?, onLength: (Int) -> Unit, onChosenPosition: (Offset) -> Unit) {
+    val isBreak = kind == RestKind.BREAK
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered = true }
     Column {
         SectionLabel(
-            stringResource(R.string.pause_downtime),
+            stringResource(if (isBreak) R.string.pause_break_label else R.string.pause_downtime),
             color = LocalAccent.current.accent,
             modifier = Modifier.enterAnimation(entered, 0),
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            stringResource(R.string.downtime_how_long),
+            stringResource(if (isBreak) R.string.break_how_long else R.string.downtime_how_long),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.fillMaxWidth().enterAnimation(entered, 1),
         )
         Spacer(Modifier.height(24.dp))
         ChoiceRow<Int?>(
-            options = DOWNTIME_LENGTHS,
+            options = if (isBreak) BREAK_LENGTHS else DOWNTIME_LENGTHS,
             selected = minutes,
             label = { stringResource(R.string.cooldown_minutes, it ?: 0) },
             onSelect = { chosen -> chosen?.let(onLength) },
@@ -948,7 +994,12 @@ private fun DowntimePart(minutes: Int?, onLength: (Int) -> Unit, onChosenPositio
         )
         val shown by animateFloatAsState(if (minutes != null) 1f else 0f, tween(360, delayMillis = 150), label = "downtimeNote")
         Text(
-            if (minutes != null) stringResource(R.string.downtime_note, minutes) else "",
+            when {
+                minutes == null -> ""
+                // A break says how many are left after this one, so the limit is never a surprise.
+                isBreak -> stringResource(R.string.break_note, minutes, breaksLeft - 1)
+                else -> stringResource(R.string.downtime_note, minutes)
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.heightIn(min = 72.dp).padding(top = 20.dp).graphicsLayer { alpha = shown },
@@ -958,12 +1009,12 @@ private fun DowntimePart(minutes: Int?, onLength: (Int) -> Unit, onChosenPositio
 
 /** The gentle check when a chosen downtime is up and the user is still in the app. */
 @Composable
-private fun DowntimeEndPart(minutes: Int) {
+private fun DowntimeEndPart(minutes: Int, kind: RestKind) {
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered = true }
     Column {
         Text(
-            pluralStringResource(R.plurals.downtime_end_title, minutes, minutes),
+            pluralStringResource(if (kind == RestKind.BREAK) R.plurals.break_end_title else R.plurals.downtime_end_title, minutes, minutes),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.fillMaxWidth().enterAnimation(entered, 0),

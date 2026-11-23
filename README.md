@@ -46,14 +46,21 @@ action (Close, Continue, or none).
 
 ## Downtime, workday goals and steps
 
-- **"It's my downtime"** is on the first step of every pause. Choose 15, 30
-  or 60 minutes; Continue opens the app with no wait, and GoalGate leaves
-  every chosen app alone for that time. If you are still in a chosen app
-  when it ends, one check asks "Keep going, or stop here?". Reflections
-  counts downtime on its own line, not as an answer.
-- **Scheduled downtime** (Settings > Downtime): daily hours (up to 3, can run
-  past midnight), weekends, and public holidays. At those times "It's my
-  downtime" comes first on the pause.
+- **"It's my downtime"** is offered on the pause only inside the user's
+  scheduled downtime (Settings > Downtime: daily hours, up to 3, can run past
+  midnight; weekends; public holidays). With nothing scheduled it is never
+  offered. Choose 15, 30 or 60 minutes; Continue opens the app with no wait,
+  and GoalGate leaves every chosen app alone for that time. If you are still
+  in a chosen app when it ends, one check asks "Keep going, or stop here?".
+- **"Take a break"** is offered at all other times: at most **3 a day**, each
+  **10, 20 or 30 minutes**. It works like downtime. The row shows how many
+  are left ("2 left today"); when all 3 are used it is greyed out and says
+  "back tomorrow", until midnight. A break counts once the user continues
+  with it (choosing one and tapping Close does not use it). The count is read
+  from the log (`breakTimesSince`), so it survives restarts and needs no
+  extra storage; limits are `MAX_BREAKS_PER_DAY` and `BREAK_LENGTHS` in
+  `data/Schedule.kt`.
+- Reflections counts downtime and breaks on their own lines, not as answers.
 - **Public holidays** are bundled for South Korea, the US, the UK, Canada,
   Australia and Japan, 2026 to 2030 (`tools/make_holidays.py` regenerates
   them with the open-source `holidays` package; only the dates ship, and

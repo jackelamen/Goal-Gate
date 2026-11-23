@@ -94,10 +94,11 @@ data class TriggerLog(
     val goalId: Long? = null,
     /**
      * "YES", "MAYBE" or "NO" (see [Answer]), "DOWNTIME" when the user chose
-     * "It's my downtime", or null if they left before answering.
+     * "It's my downtime", "BREAK" when they chose "Take a break", or null if
+     * they left before answering.
      */
     val answer: String? = null,
-    /** With "DOWNTIME": the minutes chosen (15, 30 or 60). Otherwise null. */
+    /** With "DOWNTIME" or "BREAK": the minutes chosen. Otherwise null. */
     val downtimeMinutes: Int? = null,
 ) {
     companion object {
@@ -105,8 +106,12 @@ data class TriggerLog(
         const val REASON_TIME_CHECK = "TIME_CHECK"
         /** The downtime the user chose has ended while they were still in the app. */
         const val REASON_DOWNTIME_END = "DOWNTIME_END"
+        /** The break the user chose has ended while they were still in the app. */
+        const val REASON_BREAK_END = "BREAK_END"
 
         const val ANSWER_DOWNTIME = "DOWNTIME"
+        /** "Take a break": a short, limited rest (see MAX_BREAKS_PER_DAY). */
+        const val ANSWER_BREAK = "BREAK"
 
         const val ACTION_NONE = "NONE"
         const val ACTION_CONTINUE = "CONTINUE"
