@@ -393,6 +393,9 @@ class PauseActivity : ComponentActivity() {
 
     /** "Close": send the user to the home screen instead of the app. */
     private fun onClose() {
+        // While the home screen appears, the app underneath can flicker into view for a
+        // split second; tell the controller so that flicker does not bring this pause back.
+        if (targetPackage.isNotEmpty()) GateController.noteClosed(targetPackage)
         saveAction(TriggerLog.ACTION_CLOSE)
         startActivity(
             Intent(Intent.ACTION_MAIN)

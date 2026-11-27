@@ -97,6 +97,16 @@ default): after Continue, GoalGate counts how long you stay in that app (5,
 on; a minute or more resets the clock (`SessionTimer.kt`, deliberately not a
 setting).
 
+**No pause while leaving an app.** While Android switches apps, the app
+being closed can show up "in front" for a split second after the home
+screen: after Close on the pause, after Home or the back gesture, or just as
+a time check or the end of a downtime or break comes due. `SwitchGuard`
+flags those moments (an app back within 2 s of being left, or within 3 s of
+Close on its pause), and the controller then looks again after 0.8 s and
+shows the pause only if the app is really still in front. Normal opens are
+not delayed. `SwitchGuardTest` replays these sequences through the real
+controller.
+
 **Hourly count fix.** WordGate could count one open twice when the pause
 screen was rebuilt (rotation, or Android recreating it): it logged a second
 row and then counted its own earlier row plus one. GoalGate reuses the row

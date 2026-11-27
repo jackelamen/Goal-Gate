@@ -69,6 +69,16 @@ object GateController {
     /** Runs the time check on the main thread after a delay. */
     private val handler = Handler(Looper.getMainLooper())
 
+    /** For tests only: a clean controller for [context], with [packages] as the chosen apps. */
+    @androidx.annotation.VisibleForTesting
+    @Synchronized
+    internal fun resetForTest(context: Context, packages: Set<String>) {
+        forgetEverything()
+        appContext = context.applicationContext
+        initialized = true
+        selectedPackages = packages
+    }
+
     /** Needed to open the pause screen when the time is up. */
     private var appContext: Context? = null
 
@@ -96,6 +106,39 @@ object GateController {
 
     private val downtimeOver = Runnable { onDowntimeOver() }
 
+    // ---- Telling real opens from app-switching flicker (see SwitchGuard) ----
+
+    private val guard = SwitchGuard()
+
+    /** The time now, in ms since 1970. Tests replace it with a clock they can move forward. */
+    @androidx.annotation.VisibleForTesting
+    internal var clock: () -> Long = { System.currentTimeMillis() }
+
+    /**
+     * A pause waiting to be confirmed: shown only if its app is still in front
+     * after SwitchGuard.CONFIRM_MS. Cancelled as soon as another app comes to the front.
+     */
+    private var pendingConfirm: Runnable? = null
+
+    private fun cancelPendingConfirm() {
+        pendingConfirm?.let { handler.removeCallbacks(it) }
+        pendingConfirm = null
+    }
+
+    /** Runs [action] after a short wait, unless another app comes to the front first. */
+    private fun confirmLater(action: () -> Unit) {
+        cancelPendingConfirm()
+        val runnable = Runnable { synchronized(this) { pendingConfirm = null; action() } }
+        pendingConfirm = runnable
+        handler.postDelayed(runnable, SwitchGuard.CONFIRM_MS)
+    }
+
+    /** True if the screen is on and [packageName] is still the app in front. */
+    private fun stillInFront(context: Context, packageName: String): Boolean {
+        val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        return power.isInteractive && lastForeground == packageName
+    }
+
     /**
      * After a restart: the app whose clock was running when GoalGate stopped.
      * Kept only if that same app is the first one reported in front again.
@@ -114,7 +157,7 @@ object GateController {
         initialized = true
         appContext = context.applicationContext
         val prefs = statePrefs(context)
-        val now = System.currentTimeMillis()
+        val now = clock()
         try {
             val saved = JSONObject(prefs.getString(KEY_COOLDOWNS, null) ?: "{}")
             for (packageName in saved.keys()) {
@@ -136,7 +179,7 @@ object GateController {
     /** Writes the cooldowns and clocks to the phone. Called after every change. */
     private fun saveState() {
         val context = appContext ?: return
-        val now = System.currentTimeMillis()
+        val now = clock()
         val cooldowns = JSONObject()
         for ((packageName, until) in cooldownUntil) {
             if (until > now) cooldowns.put(packageName, until) // drop expired ones
@@ -184,7 +227,11 @@ object GateController {
 
         // Rule 1: nothing changed, the user is still in the same app.
         if (packageName == lastForeground) return
+        // The app that was in front has just been left (remembered for SwitchGuard).
+        lastForeground?.let { guard.left(it, clock()) }
         lastForeground = packageName
+        // A pause waiting for confirmation belonged to the app that was just left.
+        cancelPendingConfirm()
 
         try {
             handleNewForeground(context, packageName, openedAt, engine)
@@ -194,7 +241,7 @@ object GateController {
     }
 
     private fun handleNewForeground(context: Context, packageName: String, openedAt: Long, engine: Engine) {
-        val now = System.currentTimeMillis()
+        val now = clock()
 
         // First report after a restart: if the user is still in the app whose
         // clock was running, keep counting. Otherwise that clock is out of date.
@@ -223,9 +270,39 @@ object GateController {
             return
         }
 
+        // Back in front right after it was left, or right after Close on its pause:
+        // possibly a flicker while the phone switches apps. Check again shortly.
+        if (guard.isSuspicious(packageName, now)) {
+            Log.d(TAG, "Possible flicker of $packageName; checking again shortly")
+            confirmLater { openIfStillThere(context, packageName, engine) }
+            return
+        }
+
         Log.d(TAG, "Trigger for $packageName via $engine")
         timer.reset(packageName) // a pause resets the time check
         openPause(context, PauseActivity.createIntent(context, packageName, openedAt, engine))
+    }
+
+    /** The second look after a possible flicker: the pause shows only if the app really stayed. */
+    private fun openIfStillThere(context: Context, packageName: String, engine: Engine) {
+        val now = clock()
+        if (!stillInFront(context, packageName)) return
+        if (packageName !in selectedPackages || now < downtimeUntil || now < (cooldownUntil[packageName] ?: 0L)) return
+        Log.d(TAG, "Trigger for $packageName via $engine (confirmed)")
+        timer.reset(packageName)
+        saveState()
+        // Measured from now, so the wait is not counted as detection delay on the debug screen.
+        openPause(context, PauseActivity.createIntent(context, packageName, now, engine))
+    }
+
+    /**
+     * Called when the user taps Close (or Back) on the pause for [packageName].
+     * For a few seconds after, a report of that app in front is checked twice
+     * before a new pause is shown (see SwitchGuard).
+     */
+    @Synchronized
+    fun noteClosed(packageName: String) {
+        guard.closed(packageName, clock())
     }
 
     /**
@@ -234,7 +311,7 @@ object GateController {
      */
     @Synchronized
     fun startCooldown(packageName: String, minutes: Int) {
-        val now = System.currentTimeMillis()
+        val now = clock()
         cooldownUntil[packageName] = now + minutes * 60_000L
         restoredRunning = null
         pauseClock(now)
@@ -250,7 +327,7 @@ object GateController {
      */
     @Synchronized
     fun startDowntime(packageName: String, minutes: Int, isBreak: Boolean = false) {
-        val now = System.currentTimeMillis()
+        val now = clock()
         downtimeUntil = now + minutes * 60_000L
         downtimeMinutes = minutes
         restIsBreak = isBreak
@@ -263,7 +340,7 @@ object GateController {
     }
 
     /** True while a downtime the user chose is running. */
-    fun inDowntime(): Boolean = System.currentTimeMillis() < downtimeUntil
+    fun inDowntime(): Boolean = clock() < downtimeUntil
 
     /** The downtime ended. If the user is still in a chosen app, show the gentle check. */
     @Synchronized
@@ -274,23 +351,29 @@ object GateController {
         downtimeUntil = 0L
         saveState()
         val packageName = lastForeground ?: return
-        val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-        if (!power.isInteractive || packageName == context.packageName || packageName !in selectedPackages) return
-        Log.d(TAG, "Downtime of $minutes min over in $packageName")
-        openPause(
-            context,
-            PauseActivity.createIntent(
-                context, packageName, System.currentTimeMillis(), lastEngine,
-                reason = if (wasBreak) TriggerLog.REASON_BREAK_END else TriggerLog.REASON_DOWNTIME_END,
-                minutesUsed = minutes,
-            ),
-        )
+        if (packageName == context.packageName || packageName !in selectedPackages) return
+        // The user may be closing the app at this very moment: look again shortly
+        // and show the end check only if they are really still in it.
+        confirmLater {
+            if (!stillInFront(context, packageName)) return@confirmLater
+            Log.d(TAG, "Downtime of $minutes min over in $packageName")
+            openPause(
+                context,
+                PauseActivity.createIntent(
+                    context, packageName, clock(), lastEngine,
+                    reason = if (wasBreak) TriggerLog.REASON_BREAK_END else TriggerLog.REASON_DOWNTIME_END,
+                    minutesUsed = minutes,
+                ),
+            )
+        }
     }
 
     /** Forgets cooldowns, clocks and the last app seen (used by "Reset GoalGate"). */
     @Synchronized
     fun forgetEverything() {
         handler.removeCallbacks(timeUp)
+        cancelPendingConfirm()
+        guard.clear()
         handler.removeCallbacks(downtimeOver)
         downtimeUntil = 0L
         downtimeMinutes = 0
@@ -329,10 +412,16 @@ object GateController {
     private fun onTimeUp() {
         val packageName = runningPackage ?: return
         val context = appContext ?: return
-        val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-        if (limitMs() <= 0 || !power.isInteractive || lastForeground != packageName) return
+        if (limitMs() <= 0 || !stillInFront(context, packageName)) return
+        // The user may be closing the app at this very moment: look again shortly.
+        confirmLater { fireTimeCheck(context, packageName) }
+    }
 
-        val now = System.currentTimeMillis()
+    /** The time check, once it is confirmed the user is still in [packageName]. */
+    private fun fireTimeCheck(context: Context, packageName: String) {
+        if (limitMs() <= 0 || !stillInFront(context, packageName) || runningPackage != packageName) return
+
+        val now = clock()
         val minutesUsed = (timer.usedMs(packageName, now) / 60_000L).toInt().coerceAtLeast(1)
         // The pause resets the clock; "Continue" on it starts a fresh one.
         runningPackage = null
@@ -356,7 +445,7 @@ object GateController {
      */
     @Synchronized
     private fun onScreenChanged(screenOn: Boolean) {
-        val now = System.currentTimeMillis()
+        val now = clock()
         if (!screenOn) {
             pauseClock(now)
         } else if (now >= downtimeUntil) {
